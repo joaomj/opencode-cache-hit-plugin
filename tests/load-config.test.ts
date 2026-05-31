@@ -4,8 +4,9 @@ import { join } from "node:path"
 import { CONFIG_PATH, PLUGIN_ROOT, loadPluginConfig } from "../src/load-config.ts"
 
 describe("load-config paths", () => {
-  test("PLUGIN_ROOT is package root (contains cache-hit.config.json)", () => {
-    expect(existsSync(join(PLUGIN_ROOT, "cache-hit.config.json"))).toBe(true)
+  test("PLUGIN_ROOT is package root", () => {
+    expect(existsSync(join(PLUGIN_ROOT, "cache-hit.config.example.json"))).toBe(true)
+    expect(existsSync(join(PLUGIN_ROOT, "index.tsx"))).toBe(true)
     expect(CONFIG_PATH).toBe(join(PLUGIN_ROOT, "cache-hit.config.json"))
   })
 
