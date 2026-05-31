@@ -1,0 +1,22 @@
+{
+  "$comment": "lang: en | zh | auto (system locale). Default en.",
+  "currency": "CNY",
+  "costUnit": "USD",
+  "rate": 7.2,
+  "display": {
+    "lang": "en",
+    "panelBorder": true
+  },
+  "timeline": {
+    "enabled": false,
+    "dir": "",
+    "flushIncomplete": false,
+    "logSummaryMessages": true,
+    "maxMemoryRows": 50,
+    "maxLinesPerFile": 100000,
+    "rotateMaxBytes": 16777216,
+    "retainRotated": 5,
+    "maxAgeDays": 30,
+    "maxLogFiles": 20
+  }
+}

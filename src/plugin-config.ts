@@ -1,0 +1,116 @@
+import { type CostDisplayConfig, normalizeCostDisplay, DEFAULT_COST_DISPLAY } from "./format-cost.ts"
+import { resolveLang, type Lang } from "./i18n.ts"
+
+export type DisplayConfig = {
+  /** `en` | `zh` | `auto` (follow system locale). Default `en`. */
+  lang: Lang | "auto"
+  /** Optional override for the hit-rate line prefix (default from i18n). */
+  mainHitLabel?: string
+  /** Outer panel border (visual-cache style). Default true. */
+  panelBorder: boolean
+  /** @deprecated Use panelBorder */
+  agentsBorder?: boolean
+}
+
+export const DEFAULT_DISPLAY: DisplayConfig = {
+  lang: "en",
+  panelBorder: true,
+}
+
+export type TimelineConfig = {
+  enabled: boolean
+  /** Empty → plugin `logs/` directory */
+  dir: string
+  flushIncomplete: boolean
+  logSummaryMessages: boolean
+  maxMemoryRows: number
+  /** 0 = unlimited; after each append keep only the last N lines in the active file */
+  maxLinesPerFile: number
+  /** 0 = off; when active file reaches this size (bytes), roll to `.jsonl.1` before append */
+  rotateMaxBytes: number
+  /** How many rotated backups to keep (`file.jsonl.1` … `.N`); 0 = delete on roll */
+  retainRotated: number
+  /** 0 = off; delete `*.jsonl*` in log dir older than N days (on collector start) */
+  maxAgeDays: number
+  /** 0 = unlimited; max number of `*.jsonl*` files in log dir (oldest mtime deleted first) */
+  maxLogFiles: number
+}
+
+export const DEFAULT_TIMELINE: TimelineConfig = {
+  enabled: false,
+  dir: "",
+  flushIncomplete: false,
+  logSummaryMessages: true,
+  maxMemoryRows: 50,
+  maxLinesPerFile: 0,
+  rotateMaxBytes: 0,
+  retainRotated: 5,
+  maxAgeDays: 0,
+  maxLogFiles: 0,
+}
+
+export type PluginConfig = {
+  cost: CostDisplayConfig
+  display: DisplayConfig
+  timeline: TimelineConfig
+}
+
+export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
+  cost: { ...DEFAULT_COST_DISPLAY },
+  display: { ...DEFAULT_DISPLAY },
+  timeline: { ...DEFAULT_TIMELINE },
+}
+
+export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
+  const t = { ...DEFAULT_TIMELINE }
+  if (!raw || typeof raw !== "object") return t
+  const o = raw as Record<string, unknown>
+  if (typeof o.enabled === "boolean") t.enabled = o.enabled
+  if (typeof o.dir === "string") t.dir = o.dir
+  if (typeof o.flushIncomplete === "boolean") t.flushIncomplete = o.flushIncomplete
+  if (typeof o.logSummaryMessages === "boolean") t.logSummaryMessages = o.logSummaryMessages
+  if (typeof o.maxMemoryRows === "number" && o.maxMemoryRows > 0) {
+    t.maxMemoryRows = Math.floor(o.maxMemoryRows)
+  }
+  if (typeof o.maxLinesPerFile === "number" && o.maxLinesPerFile >= 0) {
+    t.maxLinesPerFile = Math.floor(o.maxLinesPerFile)
+  }
+  if (typeof o.rotateMaxBytes === "number" && o.rotateMaxBytes >= 0) {
+    t.rotateMaxBytes = Math.floor(o.rotateMaxBytes)
+  }
+  if (typeof o.retainRotated === "number" && o.retainRotated >= 0) {
+    t.retainRotated = Math.floor(o.retainRotated)
+  }
+  if (typeof o.maxAgeDays === "number" && o.maxAgeDays >= 0) {
+    t.maxAgeDays = Math.floor(o.maxAgeDays)
+  }
+  if (typeof o.maxLogFiles === "number" && o.maxLogFiles >= 0) {
+    t.maxLogFiles = Math.floor(o.maxLogFiles)
+  }
+  return t
+}
+
+export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
+  const d = { ...DEFAULT_DISPLAY }
+  if (!raw || typeof raw !== "object") return d
+  const o = raw as Record<string, unknown>
+  if (typeof o.lang === "string") {
+    d.lang = o.lang === "auto" ? "auto" : resolveLang(o.lang)
+  }
+  if (typeof o.mainHitLabel === "string" && o.mainHitLabel.length > 0) d.mainHitLabel = o.mainHitLabel
+  if (typeof o.panelBorder === "boolean") d.panelBorder = o.panelBorder
+  else if (typeof o.agentsBorder === "boolean") d.panelBorder = o.agentsBorder
+  return d
+}
+
+export function normalizePluginConfig(raw: unknown): PluginConfig {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_PLUGIN_CONFIG }
+  const o = raw as Record<string, unknown>
+  const cost = normalizeCostDisplay(raw)
+  const displayRaw = o.display
+  return {
+    cost,
+    display: normalizeDisplayConfig(displayRaw),
+    timeline: normalizeTimelineConfig(o.timeline),
+  }
+}

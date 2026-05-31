@@ -1,0 +1,70 @@
+{
+  "name": "opencode-cache-hit",
+  "version": "0.1.0",
+  "description": "OpenCode TUI sidebar: prompt cache hit rate, tokens & cost with sub-agent rollup. Works with opencode-visual-cache; optional per-call JSONL timeline.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhumengzhu/opencode-cache-hit.git"
+  },
+  "homepage": "https://github.com/zhumengzhu/opencode-cache-hit#readme",
+  "bugs": "https://github.com/zhumengzhu/opencode-cache-hit/issues",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "sidebar",
+    "cache",
+    "cache-hit",
+    "cache-hit-rate",
+    "prompt-cache",
+    "token",
+    "cost",
+    "cost-tracking",
+    "sub-agent",
+    "agent",
+    "opencode-visual-cache",
+    "jsonl",
+    "timeline"
+  ],
+  "exports": {
+    ".": "./index.tsx",
+    "./tui": "./index.tsx",
+    "./tui-panel": "./src/tui-panel/index.ts"
+  },
+  "files": [
+    "index.tsx",
+    "src",
+    "cache-hit.config.example.json",
+    "LICENSE",
+    "README.md",
+    "README.zh-CN.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "docs",
+    "scripts"
+  ],
+  "scripts": {
+    "test": "bun test tests/",
+    "check": "bun test tests/",
+    "syntax": "bun test tests/module-load.test.ts",
+    "prepublishOnly": "bun test tests/",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-push": "bun test tests/"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.0"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.14.0",
+    "@opencode-ai/sdk": ">=1.14.0",
+    "@opentui/core": ">=0.2.0",
+    "@opentui/solid": ">=0.2.0"
+  },
+  "devDependencies": {
+    "simple-git-hooks": "^2.13.1"
+  }
+}
