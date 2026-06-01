@@ -81,14 +81,14 @@ Module: `src/timeline/records.ts` — `buildCallRecords(sessionId, rootSessionId
 **Default layout**
 
 ```
-~/.config/opencode/plugins/opencode-cache-hit/logs/
+~/.local/share/opencode/logs/cache-hit/
   timeline-2026-05-31.jsonl       # one active file per local calendar day
   timeline-2026-05-31.jsonl.1     # size rotation backup for that day
 ```
 
 All main and child sessions for a day share one file; filter by `rootSessionId` / `sessionId` / `scope`. A new date gets a new filename at midnight.
 
-Optional `dir` (e.g. `~/.local/share/opencode/cache-hit/logs/`).
+Optional `dir` (e.g. `~/my-logs/`). Supports `~/` expansion to home directory.
 
 **Legacy**: older builds used `<rootSessionId>.jsonl` per main session; not migrated automatically.
 
@@ -116,7 +116,7 @@ Example values above; code defaults below (`enabled: false`, rotation `0` except
 | Field | Code default | Description |
 |-------|--------------|-------------|
 | `enabled` | `false` | No IO when off |
-| `dir` | `""` | Empty → plugin `logs/` |
+| `dir` | `""` | Empty → `~/.local/share/opencode/logs/cache-hit` |
 | `flushIncomplete` | `false` | Write only completed turns |
 | `logSummaryMessages` | `true` | Include summary rows (flagged) |
 | `maxMemoryRows` | `50` | In-memory rows for future UI |
@@ -200,7 +200,7 @@ sequenceDiagram
 ### Phase 1 — disk only (current)
 
 ```bash
-LOG=~/.config/opencode/plugins/opencode-cache-hit/logs/timeline-$(date +%Y-%m-%d).jsonl
+LOG=~/.local/share/opencode/logs/cache-hit/timeline-$(date +%Y-%m-%d).jsonl
 tail -f "$LOG"
 jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' "$LOG"
 ```

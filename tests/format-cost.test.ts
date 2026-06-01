@@ -13,7 +13,7 @@ describe("createCostFormatter", () => {
 
   test("USD cost to CNY display", () => {
     const fmt = createCostFormatter(DEFAULT_COST_DISPLAY)
-    expect(fmt(0.1)).toBe("~¥0.720")
+    expect(fmt(0.1)).toBe("~¥0.677")
     expect(fmt(0.001)).toBe("<¥0.01")
   })
 
@@ -33,7 +33,7 @@ describe("normalizeCostDisplay", () => {
     const cfg = normalizeCostDisplay(null)
     expect(cfg.currency).toBe("CNY")
     expect(cfg.costUnit).toBe("USD")
-    expect(cfg.rate).toBe(7.2)
+    expect(cfg.rate).toBe(6.77)
   })
 
   test("parses costUnit and rate", () => {

@@ -26,7 +26,7 @@ export const CURRENCY_PRESETS: Record<CurrencyCode, { symbol: string; decimals: 
 export const DEFAULT_COST_DISPLAY: CostDisplayConfig = {
   currency: "CNY",
   costUnit: "USD",
-  rate: 7.2,
+  rate: 6.77,
 }
 
 function resolveExchangeRate(cfg: CostDisplayConfig): number {

@@ -43,8 +43,8 @@ flowchart TB
 ## Cost model
 
 - OpenCode: `msg.cost` accumulates assistant messages using **USD** list prices from `opencode.json`.
-- Plugin: `createCostFormatter(loadPluginConfig().cost)`; default `costUnit: USD` → `currency: CNY`, `rate: 7.2`.
-- Config file: `cache-hit.config.json` at plugin root (`load-config.ts`); defaults in `plugin-config.ts`.
+- Plugin: `createCostFormatter(loadPluginConfig().cost)`; default `costUnit: USD` → `currency: CNY`, `rate: 6.77`.
+- Config file: `~/.config/opencode/cache-hit.json` (preferred) or `cache-hit.config.json` at plugin root (legacy). Defaults in `plugin-config.ts`.
 
 ## Runtime architecture
 

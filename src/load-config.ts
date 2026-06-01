@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
   type PluginConfig,
@@ -9,6 +10,11 @@ import {
 
 /** Parent of `src/` (plugin package root). Do not wrap in `dirname` — `..` already resolves there. */
 export const PLUGIN_ROOT = fileURLToPath(new URL("..", import.meta.url))
+
+/** Preferred config: ~/.config/opencode/cache-hit.json (survives plugin updates). */
+export const XDG_CONFIG_PATH = join(homedir(), ".config", "opencode", "cache-hit.json")
+
+/** Legacy config: plugin-root `cache-hit.config.json` (for npm cache / local installs). */
 export const CONFIG_PATH = join(PLUGIN_ROOT, "cache-hit.config.json")
 
 function cloneDefault(): PluginConfig {
@@ -19,11 +25,24 @@ function cloneDefault(): PluginConfig {
   }
 }
 
-export function loadPluginConfig(): PluginConfig {
-  if (!existsSync(CONFIG_PATH)) return cloneDefault()
+function tryRead(path: string): PluginConfig | null {
   try {
-    return normalizePluginConfig(JSON.parse(readFileSync(CONFIG_PATH, "utf8")))
+    return normalizePluginConfig(JSON.parse(readFileSync(path, "utf8")))
   } catch {
-    return cloneDefault()
+    return null
   }
+}
+
+export function loadPluginConfig(): PluginConfig {
+  // 1. XDG config dir (preferred — persists across updates)
+  if (existsSync(XDG_CONFIG_PATH)) {
+    const cfg = tryRead(XDG_CONFIG_PATH)
+    if (cfg) return cfg
+  }
+  // 2. Legacy plugin-root config (backward compatible)
+  if (existsSync(CONFIG_PATH)) {
+    const cfg = tryRead(CONFIG_PATH)
+    if (cfg) return cfg
+  }
+  return cloneDefault()
 }

@@ -2,14 +2,14 @@
   "$comment": "lang: en | zh | auto (system locale). Default en.",
   "currency": "CNY",
   "costUnit": "USD",
-  "rate": 7.2,
+  "rate": 6.77,
   "display": {
     "lang": "en",
     "panelBorder": true
   },
   "timeline": {
     "enabled": false,
-    "dir": "",
+    "dir": "~/.local/share/opencode/logs/cache-hit",
     "flushIncomplete": false,
     "logSummaryMessages": true,
     "maxMemoryRows": 50,

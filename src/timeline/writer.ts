@@ -1,11 +1,11 @@
 import { appendFile, mkdir, readdir, stat, unlink } from "node:fs/promises"
+import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import type { TimelineConfig } from "../plugin-config.ts"
-import { PLUGIN_ROOT } from "../load-config.ts"
 import type { LlmCallRecord } from "./types.ts"
 import { rotateFileBySize, trimFileToMaxLines } from "./rotation.ts"
 
-export const DEFAULT_TIMELINE_DIR = join(PLUGIN_ROOT, "logs")
+export const DEFAULT_TIMELINE_DIR = join(homedir(), ".local", "share", "opencode", "logs", "cache-hit")
 export const TIMELINE_FILE_PREFIX = "timeline"
 
 export type TimelineWriteOptions = Pick<
@@ -14,8 +14,9 @@ export type TimelineWriteOptions = Pick<
 >
 
 export function resolveTimelineDir(config: TimelineConfig): string {
-  const raw = config.dir?.trim()
-  return raw.length > 0 ? raw : DEFAULT_TIMELINE_DIR
+  const raw = (config.dir ?? "").trim()
+  if (!raw) return DEFAULT_TIMELINE_DIR
+  return raw.startsWith("~/") ? join(homedir(), raw.slice(2)) : raw
 }
 
 /** Local calendar day `YYYY-MM-DD` for daily log files. */

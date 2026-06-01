@@ -57,7 +57,9 @@ This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel 
 
 ### Option A: OpenCode command palette (recommended)
 
-`Ctrl+P` → **install plugin** → `opencode-cache-hit@latest` (when published) or your local path.
+`Ctrl+P` → type **install plugin** → press `Tab` to switch scope to **global** (default is local) → type `opencode-cache-hit@latest` → press Enter.
+
+Global plugins install to `~/.cache/opencode/packages/opencode-cache-hit@latest/`. Create config at `~/.config/opencode/cache-hit.json`:
 
 ### Option B: Manual
 

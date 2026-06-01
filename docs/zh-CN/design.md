@@ -43,8 +43,8 @@ flowchart TB
 ## 成本模型
 
 - OpenCode：`msg.cost` = 按 `opencode.json` 中**美元**单价对 assistant 消息累加。
-- 插件：`createCostFormatter(loadPluginConfig().cost)`；默认 `costUnit: USD` → `currency: CNY`，`rate: 7.2`。
-- 配置路径：插件根目录 `cache-hit.config.json`（`load-config.ts`）；缺省见 `plugin-config.ts` 的 `DEFAULT_PLUGIN_CONFIG`。
+- 插件：`createCostFormatter(loadPluginConfig().cost)`；默认 `costUnit: USD` → `currency: CNY`，`rate: 6.77`。
+- 配置路径：优先 `~/.config/opencode/cache-hit.json`，兜底插件根目录 `cache-hit.config.json`。缺省见 `plugin-config.ts` 的 `DEFAULT_PLUGIN_CONFIG`。
 
 ## 运行时架构
 

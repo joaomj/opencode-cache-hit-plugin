@@ -101,14 +101,14 @@ export function buildCallRecords(
 **默认路径（可配置）**
 
 ```
-~/.config/opencode/plugins/opencode-cache-hit/logs/
+~/.local/share/opencode/logs/cache-hit/
   timeline-2026-05-31.jsonl       # 按本地日历日一个活跃文件
   timeline-2026-05-31.jsonl.1     # 当日超过 rotateMaxBytes 时链式备份
 ```
 
 所有主/子 session 的调用写入**同一天**的同一文件；用行内 `rootSessionId` / `sessionId` / `scope` 筛某场对话。跨日自动切到新文件名。
 
-`dir` 非空时可改到例如 `~/.local/share/opencode/cache-hit/logs/`。
+`dir` 非空时可改到例如 `~/my-logs/`，支持 `~/` 展开为 home 目录。
 
 推荐 **JSONL** 第一期：实现简单、`tail -f` / `jq` 友好；SQLite 留给第二期索引查询。
 
@@ -138,7 +138,7 @@ export function buildCallRecords(
 | 字段 | 代码默认 | 说明 |
 |------|----------|------|
 | `enabled` | `false` | 关闭时零 IO，不影响侧栏 |
-| `dir` | `""` | 空则用插件目录下 `logs/` |
+| `dir` | `""` | 空则用 `~/.local/share/opencode/logs/cache-hit` |
 | `flushIncomplete` | `false` | 是否在未完成时写 JSONL |
 | `logSummaryMessages` | `true` | 是否记录 summary 行 |
 | `maxMemoryRows` | `50` | TUI 内存中保留条数（全量仍可从文件读） |
@@ -228,7 +228,7 @@ sequenceDiagram
 - 文档示例：
 
 ```bash
-LOG=~/.config/opencode/plugins/opencode-cache-hit/logs/timeline-$(date +%Y-%m-%d).jsonl
+LOG=~/.local/share/opencode/logs/cache-hit/timeline-$(date +%Y-%m-%d).jsonl
 tail -f $LOG
 jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' $LOG
 ```

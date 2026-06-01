@@ -19,7 +19,7 @@ export const DEFAULT_DISPLAY: DisplayConfig = {
 
 export type TimelineConfig = {
   enabled: boolean
-  /** Empty → plugin `logs/` directory */
+  /** Empty → `~/.local/share/opencode/logs/cache-hit`. Supports `~/…` expansion. */
   dir: string
   flushIncomplete: boolean
   logSummaryMessages: boolean

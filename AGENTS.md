@@ -40,8 +40,9 @@ After moving or renaming exports: run full `bun test`; `tests/module-load.test.t
 ## Configuration
 
 - Example: [cache-hit.config.example.json](cache-hit.config.example.json) — **included in npm** `files`.
-- Runtime: `cache-hit.config.json` beside package root (`CONFIG_PATH` in `load-config.ts`); **not** published; gitignored.
+- Runtime: `~/.config/opencode/cache-hit.json` (preferred) or `cache-hit.config.json` beside package root (legacy fallback); **not** published; gitignored.
 - Defaults: [src/plugin-config.ts](src/plugin-config.ts).
+- Timeline log dir default: `~/.local/share/opencode/logs/cache-hit/`. Supports `~/` expansion in `timeline.dir`.
 
 ## npm publish
 

@@ -16,25 +16,41 @@ Coding agents: [AGENTS.md](AGENTS.md).
 
 After `bun install`, a **pre-push** hook runs `bun test` (skip with `git push --no-verify`). **CI** (GitHub Actions on `main` and PRs) runs the same tests on the server.
 
-## Configuration file (local)
+## Configuration file
 
-The plugin reads **`cache-hit.config.json`** from the package root (`PLUGIN_ROOT`, same directory as `index.tsx`). Code defaults apply if the file is missing.
+The plugin reads config from two locations (priority order):
+
+1. **XDG**: `~/.config/opencode/cache-hit.json` (preferred — persists across plugin updates)
+2. **Legacy**: `cache-hit.config.json` beside plugin root (backward compatible)
+
+The XDG path is recommended for npm global installs; the legacy path still works for local installs and existing setups.
 
 | File | In npm tarball? | Purpose |
 |------|-----------------|--------|
 | `cache-hit.config.example.json` | **Yes** | Template; copy and edit |
-| `cache-hit.config.json` | **No** | Your overrides (gitignored here) |
-| `logs/` | **No** | Timeline output when enabled |
+| `cache-hit.config.json` | **No** | Legacy plugin-root overrides |
+| `logs/` | **No** | Timeline output (default: `~/.local/share/opencode/logs/cache-hit/`) |
 
-After OpenCode installs the package (npm or cache):
+After installing:
 
 ```bash
-cd ~/.cache/opencode/packages/opencode-cache-hit@latest
-cp cache-hit.config.example.json cache-hit.config.json
+cp cache-hit.config.example.json ~/.config/opencode/cache-hit.json
 # edit, then restart OpenCode
 ```
 
-For a **local path** in `tui.json`, put `cache-hit.config.json` in that folder (e.g. `~/.config/opencode/plugins/opencode-cache-hit/`).
+For a **local path** plugin in `~/.config/opencode/plugins/opencode-cache-hit/`, placing `cache-hit.config.json` in that folder also works (matches the legacy fallback).
+
+## Versioning
+
+Follow [Semantic Versioning](https://semver.org/):
+
+| Change | Bump | Example |
+|--------|------|---------|
+| Bug fix (backward-compatible) | **patch** | `0.1.0` → `0.1.1` |
+| New feature (backward-compatible) | **minor** | `0.1.0` → `0.2.0` |
+| Breaking change | **major** | `0.2.0` → `1.0.0` |
+
+Default changes (rate, paths) accompanied by new features → minor. Pure bugfixes only → patch.
 
 ## Publishing to npm
 

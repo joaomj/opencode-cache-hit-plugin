@@ -80,7 +80,9 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 ## 安装
 
-**方式一：** `Ctrl+P` → install plugin → `opencode-cache-hit@latest`（发布后）或本地路径。
+**方式一：** `Ctrl+P` → 输入 **install plugin** → 按 `Tab` 将范围切换为 **global**（默认是 local）→ 输入 `opencode-cache-hit@latest` → 回车。
+
+全局插件安装到 `~/.cache/opencode/packages/opencode-cache-hit@latest/`。在 `~/.config/opencode/cache-hit.json` 创建配置：
 
 **方式二：** 编辑 `~/.config/opencode/tui.json` / `tui.jsonc`：
 
