@@ -3,6 +3,21 @@ import { perMessageHitPercent } from "../stats.ts"
 import type { AssistantMessage } from "../types.ts"
 import type { LlmCallRecord } from "./types.ts"
 
+/** Convert milliseconds timestamp to ISO 8601 with local timezone offset. */
+export function msToISOString(ms: number): string {
+  const d = new Date(ms)
+  const off = -d.getTimezoneOffset()
+  const sign = off >= 0 ? "+" : "-"
+  const hh = String(Math.floor(Math.abs(off) / 60)).padStart(2, "0")
+  const mm = String(Math.abs(off) % 60).padStart(2, "0")
+  const pad = (n: number, len = 2) => String(n).padStart(len, "0")
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` +
+    `.${pad(d.getMilliseconds(), 3)}${sign}${hh}:${mm}`
+  )
+}
+
 export function messageKeyFor(msg: AssistantMessage, sessionId: string): string {
   const id = msg.id ?? msg.messageID
   if (typeof id === "string" && id.length > 0) return `${sessionId}:${id}`
@@ -11,7 +26,15 @@ export function messageKeyFor(msg: AssistantMessage, sessionId: string): string 
 }
 
 export function sortKeyForRecord(r: LlmCallRecord): number {
-  return r.completedAt ?? r.created
+  const ts = r.completedAt ?? r.created
+  return new Date(ts).getTime()
+}
+
+export function mergeAndSortRecords(chunks: readonly LlmCallRecord[][]): LlmCallRecord[] {
+  const all = chunks.flat()
+  const keyed = all.map(r => ({ r, k: sortKeyForRecord(r) }))
+  keyed.sort((a, b) => a.k - b.k)
+  return keyed.map(x => x.r)
 }
 
 export function assistantMessageToRecord(
@@ -28,14 +51,14 @@ export function assistantMessageToRecord(
   const skippedForHit = msg.summary === true
   return {
     schema: 1,
-    recordedAt,
+    recordedAt: msToISOString(recordedAt),
     sessionId,
     rootSessionId,
     scope,
     messageKey: messageKeyFor(msg, sessionId),
     modelId: msg.modelID ?? "",
-    created: timing.created,
-    completedAt: timing.completedAt,
+    created: msToISOString(timing.created),
+    completedAt: timing.completedAt !== undefined ? msToISOString(timing.completedAt) : undefined,
     durationMs: timing.durationMs,
     isComplete: timing.isComplete,
     input: t.input ?? 0,
@@ -67,7 +90,3 @@ export function buildCallRecords(
   return out
 }
 
-export function mergeAndSortRecords(chunks: readonly LlmCallRecord[][]): LlmCallRecord[] {
-  const all = chunks.flat()
-  return all.sort((a, b) => sortKeyForRecord(a) - sortKeyForRecord(b))
-}

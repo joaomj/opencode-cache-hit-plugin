@@ -148,6 +148,7 @@ Per assistant turn → JSONL. [docs/en/timeline.md](docs/en/timeline.md) · [中
 ```bash
 LOG=~/.config/opencode/plugins/opencode-cache-hit/logs/timeline-$(date +%Y-%m-%d).jsonl
 tail -f "$LOG"
+# time fields are ISO 8601 strings with local timezone (e.g. "2024-05-30T08:00:00.000+08:00")
 jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' "$LOG"
 ```
 

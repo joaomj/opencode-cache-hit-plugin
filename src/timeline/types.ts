@@ -1,14 +1,14 @@
 /** Single LLM call row (one JSONL line). */
 export type LlmCallRecord = {
   schema: 1
-  recordedAt: number
+  recordedAt: string
   sessionId: string
   rootSessionId: string
   scope: "main" | "child"
   messageKey: string
   modelId: string
-  created: number
-  completedAt?: number
+  created: string
+  completedAt?: string
   durationMs?: number
   isComplete: boolean
   input: number

@@ -14,7 +14,7 @@ python3 -c "import json,sys; r=[json.loads(x) for x in open(sys.argv[1]) if x.st
 bun -e "const t=await Bun.file(process.argv[1]).text();const rows=t.trim().split('\n').filter(Boolean).map(l=>JSON.parse(l));const h=rows.map(r=>r.hitPercent).filter((p):p is number=>p!=null);console.log(rows.length+' calls, avg hit '+(h.reduce((a,b)=>a+b,0)/h.length).toFixed(1)+'%')" logs/timeline-2026-05-31.jsonl
 ```
 
-Export TSV for spreadsheets:
+Export TSV for spreadsheets (time fields are ISO 8601 strings):
 
 ```bash
 jq -r 'select(.hitPercent!=null) | [.completedAt,.scope,.hitPercent,.cost]|@tsv' logs/timeline-2026-05-31.jsonl

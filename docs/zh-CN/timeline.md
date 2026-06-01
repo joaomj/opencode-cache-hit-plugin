@@ -37,8 +37,8 @@ flowchart LR
 /** 单条记录；JSONL 一行一个 */
 export type LlmCallRecord = {
   schema: 1
-  /** 写入时间（本机 ms），非 LLM 时间 */
-  recordedAt: number
+  /** 写入时间（ISO 8601，含时区），非 LLM 时间 */
+  recordedAt: string
   /** 所属 session */
   sessionId: string
   /** 主 session id；子 session 时与 sessionId 不同 */
@@ -47,8 +47,8 @@ export type LlmCallRecord = {
   /** OpenCode message id；SDK 若无则用稳定合成键，见下文 */
   messageKey: string
   modelId: string
-  created: number
-  completedAt?: number
+  created: string
+  completedAt?: string
   durationMs?: number
   isComplete: boolean
   input: number
@@ -230,6 +230,7 @@ sequenceDiagram
 ```bash
 LOG=~/.local/share/opencode/logs/cache-hit/timeline-$(date +%Y-%m-%d).jsonl
 tail -f $LOG
+# 时间字段为 ISO 8601 含本地时区（如 "2024-05-30T08:00:00.000+08:00"）
 jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' $LOG
 ```
 
@@ -293,7 +294,7 @@ bun scripts/plot-hit-rate.ts $LOG --by-root -o /tmp/hit-multi.svg
 ## 示例 JSONL 行
 
 ```json
-{"schema":1,"recordedAt":1717000000000,"sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:1716999990000:deepseek/v4","modelId":"deepseek/v4","created":1716999990000,"completedAt":1717000000000,"durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:1716999990000:deepseek/v4","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false}
 ```
 
 ---

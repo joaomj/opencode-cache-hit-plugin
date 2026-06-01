@@ -155,6 +155,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 ```fish
 set log ~/.config/opencode/plugins/opencode-cache-hit/logs/timeline-(date +%Y-%m-%d).jsonl
 tail -f $log
+# 时间字段为 ISO 8601 含本地时区（如 "2024-05-30T08:00:00.000+08:00"）
 jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' $log
 ```
 

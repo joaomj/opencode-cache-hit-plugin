@@ -10,8 +10,8 @@
 type Row = {
   rootSessionId?: string
   scope?: string
-  created?: number
-  completedAt?: number
+  created?: string
+  completedAt?: string
   hitPercent?: number | null
   skippedForHit?: boolean
 }
@@ -57,7 +57,8 @@ async function loadRecords(path: string, root?: string): Promise<Row[]> {
 }
 
 function timeOf(r: Row): number {
-  return r.completedAt ?? r.created ?? 0
+  const ts = r.completedAt ?? r.created
+  return ts ? new Date(ts).getTime() : 0
 }
 
 function groupByRoot(rows: Row[]): Map<string, Row[]> {
