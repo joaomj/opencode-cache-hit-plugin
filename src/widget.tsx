@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
 import type { DisplayConfig } from "./plugin-config.ts"
-import type { AssistantMessage, SessionSnapshot, SubAgentSummary } from "./types.ts"
+import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary } from "./types.ts"
 import { PLUGIN_VERSION } from "./version.ts"
 import { AgentsView } from "./agents-view.tsx"
 import { MainSessionView } from "./main-session-view.tsx"
@@ -25,7 +25,9 @@ export function CacheHitSidebar(props: {
   messages: Accessor<AssistantMessage[]>
   main: Accessor<SessionSnapshot>
   subAgents: Accessor<SubAgentSummary[]>
+  providers: Accessor<ReadonlyArray<ProviderInfo>>
   formatCost: (amount: number) => string
+  formatRate: (perMillion: number) => string
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
   const detail = createSectionFold(true)
@@ -41,6 +43,7 @@ export function CacheHitSidebar(props: {
     messages: props.messages,
     main: props.main,
     subAgents: props.subAgents,
+    providers: props.providers,
     layout,
   })
 
@@ -96,6 +99,7 @@ export function CacheHitSidebar(props: {
               detail={detail}
               model={model}
               formatCost={props.formatCost}
+              formatRate={props.formatRate}
             />
             <Show when={m.subs().length > 0}>
               <TuiSection
@@ -106,7 +110,7 @@ export function CacheHitSidebar(props: {
                 suffix={agentsSuffix()}
                 onToggle={agents.toggle}
               >
-                <AgentsView m={m} layout={layout} formatCost={props.formatCost} />
+                <AgentsView m={m} layout={layout} providers={props.providers()} formatCost={props.formatCost} />
               </TuiSection>
             </Show>
           </Show>

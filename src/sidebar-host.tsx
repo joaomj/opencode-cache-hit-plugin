@@ -23,6 +23,7 @@ export function CacheHitSidebarHost(props: {
   display: DisplayConfig
   timeline: TimelineConfig
   formatCost: (amount: number) => string
+  formatRate: (perMillion: number) => string
   api: OpenCodeTuiApi
 }) {
   const [refreshTick, setRefreshTick] = createSignal(0)
@@ -115,7 +116,9 @@ export function CacheHitSidebarHost(props: {
       messages={mainMessages}
       main={mainSnap}
       subAgents={subAgentList}
+      providers={() => props.api.state.provider ?? []}
       formatCost={props.formatCost}
+      formatRate={props.formatRate}
     />
   )
 }

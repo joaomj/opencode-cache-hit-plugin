@@ -16,6 +16,7 @@ export function MainSessionView(props: {
   detail: SectionFold
   model: SectionFold
   formatCost: (n: number) => string
+  formatRate: (perMillion: number) => string
 }) {
   const { m, layout } = props
   return (
@@ -40,12 +41,13 @@ export function MainSessionView(props: {
         onToggle={props.detail.toggle}
       >
         <TokenDetailRows pal={m.pal()} layout={layout} t={m.t()} snap={m.main()}>
-          <Show when={m.showCombinedHit()}>
+          <Show when={m.pricing().saved > 0}>
             <TuiMetricRow
               pal={m.pal()}
               layout={layout}
-              label={m.t().withAgents}
-              value={m.combinedPct()}
+              label={m.t().saved}
+              value={props.formatCost(m.pricing().saved)}
+              fg={m.pal().success}
             />
           </Show>
         </TokenDetailRows>
@@ -69,6 +71,29 @@ export function MainSessionView(props: {
         </Show>
         <Show when={m.modelShort()}>
           <TuiMetricRow pal={m.pal()} layout={layout} label={m.t().model} value={m.modelShort()} />
+        </Show>
+        <Show when={m.pricing().inputRate > 0}>
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label={m.t().rate}
+            value={`${props.formatRate(m.pricing().inputRate)}${m.t().rateIn}`}
+            fg={m.pal().muted}
+          />
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label=""
+            value={`${props.formatRate(m.pricing().cacheReadRate)}${m.t().rateCache}`}
+            fg={m.pal().muted}
+          />
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label=""
+            value={`${props.formatRate(m.pricing().outputRate)}${m.t().rateOut}`}
+            fg={m.pal().muted}
+          />
         </Show>
       </TuiSection>
     </>

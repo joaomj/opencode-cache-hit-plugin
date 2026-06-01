@@ -46,7 +46,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 - **命中率**：会话累计 + 主块**单轮**命中率与趋势
 - **Token 明细**：缓存读/写/未命中/输出
-- **费用**：多币种配置（`USD` / `CNY` / `EUR` / `GBP` / `JPY`）
+- **费用**：多币种配置（`USD` / `CNY` / `EUR` / `GBP` / `JPY`）；从 provider 配置读取百万 token 单价及缓存节省
 - **子 agent**：**Agents** 段仅汇总**子 session**（UI 有范围提示）
 - **主 session + Agents**：主块始终显示；有子 agent 时出现可折叠的 **Agents** 段
 - **可选时间轴**：按天 JSONL 落盘
@@ -58,7 +58,8 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 | | visual-cache | cache-hit |
 |---|----------------|-----------|
 | 主 session 上下文 / Token **分布**估算 | 有 | 无 |
-| 按角色 Token 分布、缓存**节省**、百万 token **单价** | 有 | 无 |
+| 按角色 Token 分布 | 有 | 无 |
+| 缓存**节省**、百万 token **单价** | 有 | 有（读 provider 配置） |
 | **斜杠命令**改配置 | 有 | 仅配置文件 |
 | **子 agent** 汇总 | 无 | **有** |
 | 按次 **JSONL** | 无 | 可选 |

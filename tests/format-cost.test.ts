@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test"
 import {
   createCostFormatter,
+  createRateFormatter,
   normalizeCostDisplay,
   DEFAULT_COST_DISPLAY,
   CURRENCY_PRESETS,
@@ -39,6 +40,28 @@ describe("normalizeCostDisplay", () => {
   test("parses costUnit and rate", () => {
     const cfg = normalizeCostDisplay({ currency: "CNY", costUnit: "USD", rate: 7 })
     expect(cfg.rate).toBe(7)
+  })
+})
+
+describe("createRateFormatter", () => {
+  test("formats per-million rate in display currency", () => {
+    const fmt = createRateFormatter({ currency: "CNY", costUnit: "USD", rate: 7.2 })
+    expect(fmt(3)).toBe("¥21.60")
+  })
+
+  test("no conversion when currency matches costUnit", () => {
+    const fmt = createRateFormatter({ currency: "USD", costUnit: "USD" })
+    expect(fmt(5)).toBe("$5.00")
+  })
+
+  test("uses custom symbol", () => {
+    const fmt = createRateFormatter({ currency: "CNY", costUnit: "USD", rate: 1, symbol: "元" })
+    expect(fmt(2.5)).toBe("元2.50")
+  })
+
+  test("handles zero rate", () => {
+    const fmt = createRateFormatter({ currency: "USD", costUnit: "USD" })
+    expect(fmt(0)).toBe("$0.00")
   })
 })
 

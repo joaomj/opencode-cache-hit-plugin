@@ -10,14 +10,14 @@ import {
 import { computeHitBarWidth, visualWidth } from "./tui-panel/layout.ts"
 import { buildPanelPalette, type PanelPalette } from "./tui-panel/palette.ts"
 import type { PanelLayout } from "./tui-panel/use-panel-layout.ts"
-import type { AssistantMessage, SessionSnapshot, SubAgentSummary } from "./types.ts"
+import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary } from "./types.ts"
 import {
   cacheHitRatio,
-  combinedCacheHitRatio,
   computePerCallHitTrend,
   mainSessionHasStats,
   shortModelName,
 } from "./stats.ts"
+import { computePricing, type PricingInfo } from "./pricing.ts"
 
 function activeLang(display: DisplayConfig) {
   return display.lang === "auto" ? resolveLang("auto") : display.lang
@@ -35,6 +35,7 @@ export function useCacheHitMetrics(props: {
   messages: Accessor<AssistantMessage[]>
   main: Accessor<SessionSnapshot>
   subAgents: Accessor<SubAgentSummary[]>
+  providers: Accessor<ReadonlyArray<ProviderInfo>>
   layout: PanelLayout
 }) {
   const pal = createMemo(() => buildPanelPalette(props.theme()))
@@ -44,12 +45,10 @@ export function useCacheHitMetrics(props: {
   const main = createMemo(() => props.main())
   const perCall = createMemo(() => computePerCallHitTrend(props.messages()))
   const sessionRatio = createMemo(() => cacheHitRatio(main().cacheRead, main().input))
-  const combinedRatio = createMemo(() => combinedCacheHitRatio(main(), subs()))
 
-  const showCombinedHit = createMemo(() => {
-    if (subs().length === 0) return false
-    return Math.abs(combinedRatio() - sessionRatio()) >= 0.0005
-  })
+  const pricing = createMemo<PricingInfo>(() =>
+    computePricing(props.providers(), main().providerID, main().model, main().cacheRead),
+  )
 
   const mainHasStats = createMemo(() => mainSessionHasStats(main()))
   const hasData = createMemo(() => mainHasStats() || subs().length > 0)
@@ -85,9 +84,9 @@ export function useCacheHitMetrics(props: {
     main,
     mainHasStats,
     perCall,
+    pricing,
     sessionPct: createMemo(() => formatRatioAsPercent(sessionRatio())),
-    combinedPct: createMemo(() => formatRatioAsPercent(combinedRatio())),
-    showCombinedHit,
+
     hasData,
     trendLabel,
     bar,

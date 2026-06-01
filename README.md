@@ -29,7 +29,7 @@ This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel 
 
 - **Cache hit rate**: session total + **per-turn** rate with trend (↑ / ↓ / `-`) on the main block
 - **Token breakdown**: cache read / write / miss / output (aligned rows with visual-cache)
-- **Cost**: session cost with multi-currency config (`USD`, `CNY`, `EUR`, `GBP`, `JPY`)
+- **Cost**: session cost with multi-currency config (`USD`, `CNY`, `EUR`, `GBP`, `JPY`); per-million rates and cache savings from provider config
 - **Sub-agents**: **Agents** section rolls up **child sessions only** (scope labeled in UI)
 - **Main + Agents**: main block always shown; **Agents** section when sub-agents exist (foldable)
 - **Collapsible sections**: Detail / Model (and Agents); theme-adaptive hit bar colors
@@ -44,8 +44,8 @@ This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel 
 |---|----------------|-------------------|
 | Main session context / token **distribution** estimate | Yes | No — use visual-cache |
 | Per-role token breakdown (system / tools / …) | Yes | No |
-| Cache **savings** estimate | Yes | No |
-| Model **per-million** pricing from provider | Yes | Model name + session cost only |
+| Cache **savings** estimate | Yes | Yes (from provider pricing) |
+| Model **per-million** pricing from provider | Yes | Yes (from SDK provider config) |
 | **Slash commands** (`/cache-lang`, `/cache-currency`, …) | Yes | Config file only |
 | Fold state in `api.kv` | Yes | In-session (not persisted) |
 | Loaded **skills** panel | Yes | No |

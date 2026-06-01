@@ -11,11 +11,12 @@ export function mainSessionHasStats(main: SessionSnapshot): boolean {
 }
 
 export function emptySessionSnapshot(): SessionSnapshot {
-  return { model: "", input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0 }
+  return { model: "", providerID: "", input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0 }
 }
 
 export function aggregateSessionFromMessages(messages: readonly AssistantMessage[]): SessionSnapshot {
   let model = "",
+    providerID = "",
     input = 0,
     output = 0,
     reasoning = 0,
@@ -32,13 +33,16 @@ export function aggregateSessionFromMessages(messages: readonly AssistantMessage
     cacheWrite += t.cache?.write ?? 0
     cost += msg.cost ?? 0
     if (msg.modelID) model = msg.modelID
+    if (msg.providerID) providerID = msg.providerID
   }
-  return { model, input, output, reasoning, cacheRead, cacheWrite, cost }
+  return { model, providerID, input, output, reasoning, cacheRead, cacheWrite, cost }
 }
 
 export function toSubAgentSummary(id: string, snap: SessionSnapshot): SubAgentSummary {
   return {
     id,
+    model: snap.model,
+    providerID: snap.providerID,
     cost: snap.cost,
     input: snap.input,
     output: snap.output,
@@ -64,19 +68,6 @@ export function aggregateSubAgents(subs: readonly SubAgentSummary[]): SessionSna
 export function cacheHitRatio(cacheRead: number, input: number): number {
   const denom = cacheRead + input
   return denom > 0 ? cacheRead / denom : 0
-}
-
-export function combinedCacheHitRatio(
-  main: SessionSnapshot,
-  subs: readonly Pick<SubAgentSummary, "cacheRead" | "input">[],
-): number {
-  let cacheRead = main.cacheRead
-  let input = main.input
-  for (const s of subs) {
-    cacheRead += s.cacheRead
-    input += s.input
-  }
-  return cacheHitRatio(cacheRead, input)
 }
 
 export function subAgentHasStats(snap: SessionSnapshot): boolean {

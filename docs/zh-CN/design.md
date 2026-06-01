@@ -185,9 +185,13 @@ flowchart TD
 - `computePerCallHitTrend(messages)`：每条 assistant 一轮命中率；`summary: true` 跳过。
 - 展示**最后一条**非 summary 轮的命中率；与前一条比较得趋势（↑ / ↓ / `-`）。
 
-**Combined Hit**
+**单价与节省（Pricing & Saved）**
 
-- 存在子 agent 且与会话累计命中率差异 ≥ 0.05% 时显示（主+子合并口径）。
+- Provider 单价从 `api.state.provider`（SDK 运行时数据）读取，非硬编码。
+- `computePricing` 根据 `providerID` + `modelID` 查找百万 token 单价；计算 `saved = (inputRate - cacheReadRate) * cacheRead / 1M`。
+- 主 session：Detail 段展示 **Saved** 行；Model 段展示百万 token 单价（`/M 输入`、`/M 缓存`、`/M 输出`）。
+- Agents 段：**Saved** 行汇总所有子 session 的节省金额（`computeSubsSaved`）。
+- 单价不可用或节省为零时，所有 pricing 行隐藏。
 
 ## 时间字段（OpenCode SDK v2）
 

@@ -184,9 +184,13 @@ Sum input and cache.read over assistant messages
 - `computePerCallHitTrend`: one rate per assistant turn; skip `summary: true`.
 - Display the **last** non-summary turn; compare to previous for ↑ / ↓ / `-`.
 
-**Combined Hit**
+**Pricing & Saved**
 
-- Shown only when main block is visible, sub-agents exist, and combined vs session total differs by ≥ 0.05%.
+- Provider pricing is read from `api.state.provider` (SDK runtime data, not hardcoded).
+- `computePricing` looks up per-million rates by `providerID` + `modelID`; computes `saved = (inputRate - cacheReadRate) * cacheRead / 1M`.
+- Main session: **Saved** row in Detail section; per-million rates (`/M in`, `/M cache`, `/M out`) in Model section.
+- Agents section: **Saved** row sums savings across all child sessions (`computeSubsSaved`).
+- All pricing rows hidden when rates are unavailable or saved is zero.
 
 ## Time fields (OpenCode SDK v2)
 

@@ -3,9 +3,10 @@ import { For, Show } from "solid-js"
 import { TokenDetailRows } from "./cache-hit-rows.tsx"
 import type { CacheHitMetrics } from "./use-cache-hit-metrics.ts"
 import { aggregateSubAgents } from "./stats.ts"
+import { computeSubsSaved } from "./pricing.ts"
 import { formatTokenCount } from "./format-tokens.ts"
 import { TuiMetricRow, truncateVisual, type PanelLayout } from "./tui-panel/index.ts"
-import type { SubAgentSummary } from "./types.ts"
+import type { ProviderInfo, SubAgentSummary } from "./types.ts"
 
 function agentRowLabel(id: string, gauge: number): string {
   const tail = id.length > 10 ? id.slice(-8) : id
@@ -20,14 +21,27 @@ function subHasActivity(sub: SubAgentSummary): boolean {
 export function AgentsView(props: {
   m: CacheHitMetrics
   layout: PanelLayout
+  providers: ReadonlyArray<ProviderInfo>
   formatCost: (n: number) => string
 }) {
   const { m, layout } = props
   const total = () => aggregateSubAgents(m.subs())
 
+  const subsSaved = () => computeSubsSaved(m.subs(), props.providers)
+
   return (
     <>
-      <TokenDetailRows pal={m.pal()} layout={layout} t={m.t()} snap={total()} />
+      <TokenDetailRows pal={m.pal()} layout={layout} t={m.t()} snap={total()}>
+        <Show when={subsSaved() > 0}>
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label={m.t().saved}
+            value={props.formatCost(subsSaved())}
+            fg={m.pal().success}
+          />
+        </Show>
+      </TokenDetailRows>
       <Show when={total().cost > 0}>
         <TuiMetricRow
           pal={m.pal()}

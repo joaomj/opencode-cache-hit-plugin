@@ -3,7 +3,6 @@ import {
   emptySessionSnapshot,
   aggregateSessionFromMessages,
   cacheHitRatio,
-  combinedCacheHitRatio,
   subAgentHasStats,
   sidebarShouldShow,
   computePerCallHitTrend,
@@ -38,21 +37,11 @@ describe("cacheHitRatio", () => {
   })
 })
 
-describe("combinedCacheHitRatio", () => {
-  test("merges sub-agents", () => {
-    const main = { ...emptySessionSnapshot(), cacheRead: 800, input: 200 }
-    const subs: SubAgentSummary[] = [
-      { id: "c1", cost: 0, input: 100, output: 0, reasoning: 0, cacheRead: 400, cacheWrite: 0 },
-    ]
-    expect(combinedCacheHitRatio(main, subs)).toBe(0.8)
-  })
-})
-
 describe("sidebarShouldShow", () => {
   test("visible with subs only", () => {
     expect(
       sidebarShouldShow(emptySessionSnapshot(), [
-        { id: "x", cost: 0, input: 5, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
+        { id: "x", model: "", providerID: "", cost: 0, input: 5, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
       ]),
     ).toBe(true)
   })
@@ -99,8 +88,8 @@ describe("computePerCallHitTrend", () => {
 describe("aggregateSubAgents", () => {
   test("sums child sessions", () => {
     const total = aggregateSubAgents([
-      { id: "a", cost: 1, input: 10, output: 2, reasoning: 0, cacheRead: 100, cacheWrite: 5 },
-      { id: "b", cost: 2, input: 20, output: 3, reasoning: 1, cacheRead: 200, cacheWrite: 0 },
+      { id: "a", model: "", providerID: "", cost: 1, input: 10, output: 2, reasoning: 0, cacheRead: 100, cacheWrite: 5 },
+      { id: "b", model: "", providerID: "", cost: 2, input: 20, output: 3, reasoning: 1, cacheRead: 200, cacheWrite: 0 },
     ])
     expect(total.input).toBe(30)
     expect(total.cacheRead).toBe(300)

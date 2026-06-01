@@ -88,3 +88,15 @@ export function createCostFormatter(config: CostDisplayConfig): (amountUsd: numb
     return "~" + symbol + v.toFixed(decimals)
   }
 }
+
+export function createRateFormatter(config: CostDisplayConfig): (perMillion: number) => string {
+  const preset = CURRENCY_PRESETS[config.currency]
+  const symbol = config.symbol ?? preset.symbol
+  const unit = config.costUnit ?? config.convert?.from ?? "USD"
+  const rate = unit === config.currency ? 1 : resolveExchangeRate(config)
+
+  return (perMillion: number) => {
+    const v = perMillion * rate
+    return symbol + v.toFixed(2)
+  }
+}

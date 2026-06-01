@@ -1,5 +1,6 @@
 export type SessionSnapshot = {
   model: string
+  providerID: string
   input: number
   output: number
   reasoning: number
@@ -10,6 +11,8 @@ export type SessionSnapshot = {
 
 export type SubAgentSummary = {
   id: string
+  model: string
+  providerID: string
   cost: number
   input: number
   output: number
@@ -23,6 +26,7 @@ export type AssistantMessage = {
   id?: string
   messageID?: string
   modelID?: string
+  providerID?: string
   cost?: number
   /** OpenCode SDK: true = summary/compaction message, not a full LLM pricing turn */
   summary?: boolean
@@ -38,9 +42,21 @@ export type AssistantMessage = {
   }
 }
 
+export type ModelCost = {
+  input: number
+  output: number
+  cache: { read: number; write: number }
+}
+
+export type ProviderInfo = {
+  id: string
+  models: { [key: string]: { cost: ModelCost } }
+}
+
 export type OpenCodeTuiApi = {
   state: {
     path: { directory: string }
+    provider: ReadonlyArray<ProviderInfo>
     session: {
       messages: (id: string) => unknown[] | undefined
       get: (id: string) => { parentID?: string } | undefined

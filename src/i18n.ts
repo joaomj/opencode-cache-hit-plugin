@@ -10,7 +10,11 @@ export type UiStrings = {
   out: string
   reasoning: string
   cost: string
-  withAgents: string
+  saved: string
+  rate: string
+  rateIn: string
+  rateOut: string
+  rateCache: string
   hitFolded: string
   noData: string
   secDetail: string
@@ -32,7 +36,11 @@ const EN: UiStrings = {
   out: "Out:",
   reasoning: "Reason:",
   cost: "Cost:",
-  withAgents: "w/ Agents:",
+  saved: "Saved:",
+  rate: "Rate:",
+  rateIn: "/M in",
+  rateOut: "/M out",
+  rateCache: "/M cache",
   hitFolded: "hit",
   noData: "Waiting for cache data...",
   secDetail: "Detail",
@@ -53,7 +61,11 @@ const ZH: UiStrings = {
   out: "输出:",
   reasoning: "推理:",
   cost: "费用:",
-  withAgents: "含 Agents:",
+  saved: "节省:",
+  rate: "单价:",
+  rateIn: "/M 输入",
+  rateOut: "/M 输出",
+  rateCache: "/M 缓存",
   hitFolded: "命中",
   noData: "等待缓存数据...",
   secDetail: "明细",
