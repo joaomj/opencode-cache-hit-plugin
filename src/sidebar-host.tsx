@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import { CacheHitSidebar } from "./widget.tsx"
-import type { DisplayConfig, TimelineConfig } from "./plugin-config.ts"
+import type { DisplayConfig, TimelineConfig, CacheTTLConfig } from "./plugin-config.ts"
 import { createTimelineCollector } from "./timeline/collector.ts"
 import type { AssistantMessage, OpenCodeTuiApi, SubAgentSummary } from "./types.ts"
 import {
@@ -22,6 +22,7 @@ export function CacheHitSidebarHost(props: {
   theme: Record<string, unknown>
   display: DisplayConfig
   timeline: TimelineConfig
+  cacheTTL: CacheTTLConfig
   formatCost: (amount: number) => string
   formatRate: (perMillion: number) => string
   api: OpenCodeTuiApi
@@ -35,6 +36,7 @@ export function CacheHitSidebarHost(props: {
     return loadPluginConfig()
   })
   const display = createMemo(() => runtimeConfig().display)
+  const cacheTTL = createMemo(() => runtimeConfig().cacheTTL)
 
   const bumpRefresh = () => setRefreshTick((v) => v + 1)
 
@@ -113,6 +115,7 @@ export function CacheHitSidebarHost(props: {
       sessionId={() => props.sessionId}
       theme={props.theme}
       display={display()}
+      cacheTTL={cacheTTL()}
       messages={mainMessages}
       main={mainSnap}
       subAgents={subAgentList}

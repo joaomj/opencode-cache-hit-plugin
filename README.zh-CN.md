@@ -24,7 +24,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 - visual-cache：主 session **上下文 / token 分布预估**
 - cache-hit：**按轮次指标、成本、子 agent 汇总**
 
-建议两个插件一起安装。
+**缓存存活时间**功能（显示已存活时间 + 颜色状态）借鉴自 [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer)（作者：nero-sensei）。原插件提供独立的侧边栏倒计时；本插件将该概念直接集成到缓存命中面板中。
 
 ## 截图
 

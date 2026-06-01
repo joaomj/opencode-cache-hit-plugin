@@ -1,7 +1,10 @@
 /** @jsxImportSource @opentui/solid */
 import { Show } from "solid-js"
 import { TokenDetailRows } from "./cache-hit-rows.tsx"
+import { CacheTTLView } from "./cache-ttl-view.tsx"
 import type { CacheHitMetrics } from "./use-cache-hit-metrics.ts"
+import type { CacheTTLConfig } from "./plugin-config.ts"
+import type { AssistantMessage } from "./types.ts"
 import {
   TuiHitRow,
   TuiMetricRow,
@@ -9,6 +12,7 @@ import {
   type PanelLayout,
   type SectionFold,
 } from "./tui-panel/index.ts"
+import type { Accessor } from "solid-js"
 
 export function MainSessionView(props: {
   m: CacheHitMetrics
@@ -17,6 +21,8 @@ export function MainSessionView(props: {
   model: SectionFold
   formatCost: (n: number) => string
   formatRate: (perMillion: number) => string
+  cacheTTL?: CacheTTLConfig
+  messages?: Accessor<AssistantMessage[]>
 }) {
   const { m, layout } = props
   return (
@@ -32,6 +38,15 @@ export function MainSessionView(props: {
         }
       />
       <TuiMetricRow pal={m.pal()} layout={layout} label={m.t().totalHit} value={m.sessionPct()} />
+      <Show when={props.cacheTTL?.enabled && props.messages}>
+        <CacheTTLView
+          messages={props.messages!}
+          config={props.cacheTTL!}
+          pal={m.pal()}
+          layout={layout}
+          label={m.t().secTTL}
+        />
+      </Show>
 
       <TuiSection
         pal={m.pal()}

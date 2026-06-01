@@ -19,7 +19,9 @@ Roadmap items (sidebar Timeline section, metric windows, nested sub-agents) are 
 
 ## Acknowledgments
 
-This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel components (`src/tui-panel/`), and coexistence patterns are **heavily inspired by** [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache). visual-cache focuses on **main-session context / token distribution**; cache-hit focuses on **per-turn metrics and sub-agent totals**. We recommend installing both.
+This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel components (`src/tui-panel/`), and coexistence patterns are **heavily inspired by** [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache). visual-cache focuses on **main-session context / token distribution**; cache-hit focuses on **per-turn metrics and sub-agent totals**.
+
+The **cache TTL** feature (elapsed time display with color-coded status) is inspired by [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer) by nero-sensei. The original plugin provides a standalone sidebar countdown for prompt cache expiration; this plugin integrates the concept directly into the cache-hit panel.
 
 ## Screenshots
 
@@ -153,6 +155,47 @@ jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]
 ```
 
 Retention details: [Rotation and retention](docs/en/timeline.md#rotation-and-retention). Charts: [scripts/README.md](scripts/README.md).
+
+### Cache TTL (`cacheTTL`, default on)
+
+Shows how long the prompt cache has been alive. Color changes when exceeding TTL:
+
+- Green: elapsed < TTL
+- Yellow: TTL ≤ elapsed < 2×TTL
+- Red: elapsed ≥ 2×TTL
+
+```json
+"cacheTTL": {
+  "enabled": true,
+  "providers": {
+    "anthropic": "5m",
+    "openai": "5m",
+    "deepseek": "2h",
+    "google": "1h"
+  }
+}
+```
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `enabled` | `true` | Master switch |
+| `providers` | `{}` | TTL per provider (or `provider:model`). Human-readable: `30s`, `5m`, `1.5h` |
+
+**Built-in defaults** (used when provider not in config):
+
+| Provider | Default TTL | Source |
+|----------|-------------|--------|
+| anthropic | 5 min | [Anthropic docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) |
+| openai | 5 min | [OpenAI docs](https://platform.openai.com/docs/guides/prompt-caching) |
+| deepseek | 2 hours | [DeepSeek docs](https://api-docs.deepseek.com/guides/kv_cache) |
+| google | 1 hour | [Google docs](https://ai.google.dev/api/caching) |
+| xai | 5 min | [xAI docs](https://docs.x.ai/developers/advanced-api-usage/prompt-caching) |
+| minimax | 5 min | [MiniMax docs](https://platform.minimax.io/docs/api-reference/text-prompt-caching) |
+| xiaomi | 5 min | Implicit caching |
+| qwen | 5 min | Implicit caching |
+| moonshot | 5 min | Implicit caching |
+
+**Default TTL**: 5 minutes for all providers not listed above. Color changes based on elapsed time vs TTL: green (< TTL), yellow (TTL-2x TTL), red (≥ 2x TTL).
 
 ## Updating
 

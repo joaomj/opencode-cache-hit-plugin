@@ -49,16 +49,29 @@ export const DEFAULT_TIMELINE: TimelineConfig = {
   maxLogFiles: 0,
 }
 
+export type CacheTTLConfig = {
+  enabled: boolean
+  /** TTL per provider (or provider:model). Values like "5m", "1h", "30s". Falls back to built-in defaults. */
+  providers: Record<string, string>
+}
+
+export const DEFAULT_CACHE_TTL: CacheTTLConfig = {
+  enabled: true,
+  providers: {},
+}
+
 export type PluginConfig = {
   cost: CostDisplayConfig
   display: DisplayConfig
   timeline: TimelineConfig
+  cacheTTL: CacheTTLConfig
 }
 
 export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
   cost: { ...DEFAULT_COST_DISPLAY },
   display: { ...DEFAULT_DISPLAY },
   timeline: { ...DEFAULT_TIMELINE },
+  cacheTTL: { ...DEFAULT_CACHE_TTL },
 }
 
 export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
@@ -103,6 +116,50 @@ export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
   return d
 }
 
+export function normalizeCacheTTLConfig(raw: unknown): CacheTTLConfig {
+  const t: CacheTTLConfig = { enabled: DEFAULT_CACHE_TTL.enabled, providers: {} }
+  if (!raw || typeof raw !== "object") return t
+  const o = raw as Record<string, unknown>
+  if (typeof o.enabled === "boolean") t.enabled = o.enabled
+  if (o.providers && typeof o.providers === "object") {
+    const providers = o.providers as Record<string, unknown>
+    for (const [key, value] of Object.entries(providers)) {
+      if (typeof value === "string") {
+        t.providers[key] = value
+      }
+    }
+  }
+  return t
+}
+
+const TIME_UNITS: Record<string, number> = {
+  s: 1000,
+  sec: 1000,
+  second: 1000,
+  seconds: 1000,
+  m: 60_000,
+  min: 60_000,
+  minute: 60_000,
+  minutes: 60_000,
+  h: 3_600_000,
+  hr: 3_600_000,
+  hour: 3_600_000,
+  hours: 3_600_000,
+}
+
+export function parseDuration(raw: string): number | null {
+  const match = raw.trim().match(/^(\d+(?:\.\d+)?)\s*([a-z]+)$/i)
+  if (!match) {
+    const num = Number(raw)
+    return Number.isFinite(num) && num > 0 ? Math.floor(num) : null
+  }
+  const value = Number(match[1])
+  const unit = match[2].toLowerCase()
+  const multiplier = TIME_UNITS[unit]
+  if (!multiplier || !Number.isFinite(value) || value <= 0) return null
+  return Math.floor(value * multiplier)
+}
+
 export function normalizePluginConfig(raw: unknown): PluginConfig {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_PLUGIN_CONFIG }
   const o = raw as Record<string, unknown>
@@ -112,5 +169,6 @@ export function normalizePluginConfig(raw: unknown): PluginConfig {
     cost,
     display: normalizeDisplayConfig(displayRaw),
     timeline: normalizeTimelineConfig(o.timeline),
+    cacheTTL: normalizeCacheTTLConfig(o.cacheTTL),
   }
 }

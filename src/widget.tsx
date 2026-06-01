@@ -1,10 +1,11 @@
 /** @jsxImportSource @opentui/solid */
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
-import type { DisplayConfig } from "./plugin-config.ts"
+import type { DisplayConfig, CacheTTLConfig } from "./plugin-config.ts"
 import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary } from "./types.ts"
 import { PLUGIN_VERSION } from "./version.ts"
 import { AgentsView } from "./agents-view.tsx"
 import { MainSessionView } from "./main-session-view.tsx"
+
 import { useCacheHitMetrics } from "./use-cache-hit-metrics.ts"
 import {
   createPanelLayout,
@@ -22,6 +23,7 @@ export function CacheHitSidebar(props: {
   sessionId: Accessor<string>
   theme: Record<string, unknown>
   display: DisplayConfig
+  cacheTTL: CacheTTLConfig
   messages: Accessor<AssistantMessage[]>
   main: Accessor<SessionSnapshot>
   subAgents: Accessor<SubAgentSummary[]>
@@ -100,6 +102,8 @@ export function CacheHitSidebar(props: {
               model={model}
               formatCost={props.formatCost}
               formatRate={props.formatRate}
+              cacheTTL={props.cacheTTL}
+              messages={props.messages}
             />
             <Show when={m.subs().length > 0}>
               <TuiSection

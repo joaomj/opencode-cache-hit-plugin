@@ -18,5 +18,10 @@
     "retainRotated": 5,
     "maxAgeDays": 30,
     "maxLogFiles": 20
+  },
+  "cacheTTL": {
+    "enabled": true,
+    "providers": {
+    }
   }
 }
