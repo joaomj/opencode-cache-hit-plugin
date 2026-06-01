@@ -234,14 +234,19 @@ tail -f $LOG
 jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' $LOG
 ```
 
-**画图（可选脚本）** — 见 [scripts/README.md](../../scripts/README.md)：
+**画图 / 分析（可选脚本）** — 见 [scripts/README.md](../../scripts/README.md)：
 
 ```bash
 python3 -c "import json,sys; r=[json.loads(x) for x in open(sys.argv[1]) if x.strip()]; h=[x['hitPercent'] for x in r if x.get('hitPercent') is not None]; print(f\"{len(r)} calls, avg hit {sum(h)/len(h):.1f}%\")" $LOG
 
 bun scripts/plot-hit-rate.ts $LOG -o /tmp/hit.svg
 bun scripts/plot-hit-rate.ts $LOG --by-root -o /tmp/hit-multi.svg
+
+# 交互式 HTML 仪表盘（筛选、Chart.js）；加 --open 才会打开浏览器
+bun scripts/timeline-dashboard.ts --open
 ```
+
+默认日志目录与插件 `timeline.dir` 一致（`~/.local/share/opencode/logs/cache-hit/`）。
 
 ### Phase 2 — 侧栏「Timeline」折叠段
 

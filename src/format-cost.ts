@@ -73,6 +73,76 @@ export function normalizeCostDisplay(raw: unknown): CostDisplayConfig {
   return cfg
 }
 
+/** Resolved params for static HTML dashboards (timeline-dashboard.ts). */
+export type CostDisplayEmbed = {
+  currency: CurrencyCode
+  costUnit: CurrencyCode
+  rate: number
+  symbol: string
+  decimals: number
+  minDisplay: number
+  /** Chart axis / table header, e.g. "Cost (¥)". */
+  chartLabel: string
+  /** Empty when display currency matches JSONL cost unit. */
+  costNote: string
+}
+
+function currencyOrDefault(code: unknown): CurrencyCode {
+  return typeof code === "string" && code in CURRENCY_PRESETS ? (code as CurrencyCode) : DEFAULT_COST_DISPLAY.currency
+}
+
+/** Guarantee finite rate/symbol/decimals for HTML embed + Chart.js. */
+export function sanitizeCostDisplayEmbed(embed: CostDisplayEmbed): CostDisplayEmbed {
+  const currency = currencyOrDefault(embed.currency)
+  const costUnit = currencyOrDefault(embed.costUnit)
+  const preset = CURRENCY_PRESETS[currency]
+  let rate = embed.rate
+  if (!Number.isFinite(rate) || rate <= 0) {
+    rate = costUnit === currency ? 1 : (DEFAULT_COST_DISPLAY.rate ?? 1)
+  }
+  const symbol =
+    typeof embed.symbol === "string" && embed.symbol.length > 0 ? embed.symbol : preset.symbol
+  const decimals =
+    typeof embed.decimals === "number" && embed.decimals >= 0 && Number.isFinite(embed.decimals)
+      ? embed.decimals
+      : preset.decimals
+  const minDisplay =
+    typeof embed.minDisplay === "number" && embed.minDisplay > 0 && Number.isFinite(embed.minDisplay)
+      ? embed.minDisplay
+      : preset.minDisplay
+  const chartLabel = `Cost (${symbol})`
+  const costNote =
+    costUnit === currency ? "" : `JSONL cost is ${costUnit}; displayed as ${currency} @ ${rate}`
+  return { currency, costUnit, rate, symbol, decimals, minDisplay, chartLabel, costNote }
+}
+
+export function buildCostDisplayEmbed(config: CostDisplayConfig | unknown): CostDisplayEmbed {
+  const cfg = normalizeCostDisplay(config)
+  const currency = currencyOrDefault(cfg.currency)
+  const preset = CURRENCY_PRESETS[currency]
+  const symbol = cfg.symbol ?? preset.symbol
+  const decimals = cfg.decimals ?? preset.decimals
+  const minDisplay = cfg.minDisplay ?? preset.minDisplay
+  const costUnit = currencyOrDefault(cfg.costUnit ?? cfg.convert?.from ?? DEFAULT_COST_DISPLAY.costUnit)
+  const rate = costUnit === currency ? 1 : resolveExchangeRate({ ...cfg, currency, costUnit })
+  return sanitizeCostDisplayEmbed({
+    currency,
+    costUnit,
+    rate,
+    symbol,
+    decimals,
+    minDisplay,
+    chartLabel: `Cost (${symbol})`,
+    costNote:
+      costUnit === currency ? "" : `JSONL cost is ${costUnit}; displayed as ${currency} @ ${rate}`,
+  })
+}
+
+/** No config file / partial config / invalid fields → safe embed for dashboards. */
+export function normalizeCostDisplayEmbed(raw: unknown): CostDisplayEmbed {
+  return buildCostDisplayEmbed(raw)
+}
+
 export function createCostFormatter(config: CostDisplayConfig): (amountUsd: number) => string {
   const preset = CURRENCY_PRESETS[config.currency]
   const symbol = config.symbol ?? preset.symbol

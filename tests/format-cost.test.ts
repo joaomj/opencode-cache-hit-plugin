@@ -1,8 +1,11 @@
 import { describe, test, expect } from "bun:test"
 import {
+  buildCostDisplayEmbed,
   createCostFormatter,
   createRateFormatter,
   normalizeCostDisplay,
+  normalizeCostDisplayEmbed,
+  sanitizeCostDisplayEmbed,
   DEFAULT_COST_DISPLAY,
   CURRENCY_PRESETS,
 } from "../src/format-cost.ts"
@@ -62,6 +65,68 @@ describe("createRateFormatter", () => {
   test("handles zero rate", () => {
     const fmt = createRateFormatter({ currency: "USD", costUnit: "USD" })
     expect(fmt(0)).toBe("$0.00")
+  })
+})
+
+describe("buildCostDisplayEmbed", () => {
+  test("USD to CNY embed", () => {
+    const e = buildCostDisplayEmbed(DEFAULT_COST_DISPLAY)
+    expect(e.rate).toBe(6.77)
+    expect(e.chartLabel).toBe("Cost (¥)")
+    expect(e.costNote).toContain("USD")
+    expect(e.costNote).toContain("CNY")
+  })
+
+  test("no note when currency matches cost unit", () => {
+    const e = buildCostDisplayEmbed({ currency: "USD", costUnit: "USD" })
+    expect(e.rate).toBe(1)
+    expect(e.costNote).toBe("")
+    expect(e.chartLabel).toBe("Cost ($)")
+  })
+})
+
+describe("normalizeCostDisplayEmbed", () => {
+  test("null uses plugin defaults (no config file)", () => {
+    const e = normalizeCostDisplayEmbed(null)
+    expect(e.currency).toBe("CNY")
+    expect(e.costUnit).toBe("USD")
+    expect(e.rate).toBe(6.77)
+    expect(e.symbol).toBe("¥")
+  })
+
+  test("empty object uses defaults", () => {
+    const e = normalizeCostDisplayEmbed({})
+    expect(e.rate).toBe(6.77)
+  })
+
+  test("invalid currency and rate fall back", () => {
+    const e = normalizeCostDisplayEmbed({ currency: "RMB", rate: -3, costUnit: "XXX" })
+    expect(e.currency).toBe("CNY")
+    expect(e.costUnit).toBe("USD")
+    expect(e.rate).toBe(6.77)
+  })
+
+  test("partial config keeps valid rate", () => {
+    const e = normalizeCostDisplayEmbed({ currency: "EUR", rate: 0.92 })
+    expect(e.currency).toBe("EUR")
+    expect(e.rate).toBe(0.92)
+    expect(e.symbol).toBe("€")
+  })
+})
+
+describe("sanitizeCostDisplayEmbed", () => {
+  test("fixes NaN rate", () => {
+    const e = sanitizeCostDisplayEmbed({
+      currency: "CNY",
+      costUnit: "USD",
+      rate: NaN,
+      symbol: "¥",
+      decimals: 3,
+      minDisplay: 0.01,
+      chartLabel: "Cost (¥)",
+      costNote: "",
+    })
+    expect(e.rate).toBe(6.77)
   })
 })
 

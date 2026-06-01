@@ -6,6 +6,8 @@ OpenCode **TUI sidebar plugin** for prompt **cache hit rate**, **token usage**, 
 
 **Languages:** English (this file) · [简体中文](README.zh-CN.md) · [Documentation](docs/README.md)
 
+![Cache Hit sidebar panel](docs/assets/cache-hit-panel.v2.png)
+
 ## Why this plugin
 
 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) already covers **main-session** cache visualization (token distribution, savings, slash-driven settings). This project exists because that scope does not fit several real workflows:
@@ -22,10 +24,6 @@ Roadmap items (sidebar Timeline section, metric windows, nested sub-agents) are 
 This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel components (`src/tui-panel/`), and coexistence patterns are **heavily inspired by** [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache). visual-cache focuses on **main-session context / token distribution**; cache-hit focuses on **per-turn metrics and sub-agent totals**.
 
 The **cache TTL** feature (elapsed time display with color-coded status) is inspired by [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer) by nero-sensei. The original plugin provides a standalone sidebar countdown for prompt cache expiration; this plugin integrates the concept directly into the cache-hit panel.
-
-## Screenshots
-
-![Cache Hit sidebar panel](docs/assets/cache-hit-panel.png)
 
 ## Features
 
@@ -76,7 +74,7 @@ Create or edit `~/.config/opencode/tui.json` / `tui.jsonc`:
 
 Local development: use `"./plugins/opencode-cache-hit"` instead of the npm name.
 
-Copy `cache-hit.config.example.json` → `cache-hit.config.json` next to the plugin root ([Configuration file](#configuration-file)). **Restart OpenCode** after changing plugin code or config.
+Copy `cache-hit.config.example.json` → `~/.config/opencode/cache-hit.json` (recommended) or next to the plugin root. **Restart OpenCode** after changing plugin code or config.
 
 | Install | After update |
 |---------|----------------|
@@ -237,17 +235,6 @@ src/
   stats.ts / timeline/ / tui-panel/
 tests/
 ```
-
-## Configuration file
-
-Copy `cache-hit.config.example.json` → `cache-hit.config.json` next to the plugin root (`PLUGIN_ROOT`, same directory as `index.tsx`). Restart OpenCode after edits.
-
-```bash
-cd ~/.cache/opencode/packages/opencode-cache-hit@latest   # or your local plugin path
-cp cache-hit.config.example.json cache-hit.config.json
-```
-
-Details (tarball contents, local paths): [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Development
 

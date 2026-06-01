@@ -214,7 +214,12 @@ python3 -c "import json,sys; r=[json.loads(x) for x in open(sys.argv[1]) if x.st
 
 bun scripts/plot-hit-rate.ts "$LOG" -o /tmp/hit.svg
 bun scripts/plot-hit-rate.ts "$LOG" --by-root -o /tmp/hit-multi.svg
+
+# interactive HTML dashboard (filters, Chart.js); add --open to launch browser
+bun scripts/timeline-dashboard.ts --open
 ```
+
+Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencode/logs/cache-hit/`).
 
 ### Phase 2 — sidebar Timeline section (planned)
 

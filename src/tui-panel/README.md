@@ -36,7 +36,7 @@ export function MySidebar(props: { theme: Record<string, unknown> }) {
         open={open()}
         onToggle={() => setOpen((o) => !o)}
         title="My Panel"
-        version="0.1.0"
+        version="0.2.0"
       />
       <Show when={open()}>
         <Show

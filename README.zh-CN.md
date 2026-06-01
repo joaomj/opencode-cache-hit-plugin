@@ -2,109 +2,90 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量与成本；**主 session + 子 agent** 同屏汇总（默认开启主块）。可选与 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) 共存。
+OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量与成本；**主 session + 子 agent** 同屏汇总（默认独立使用）。可选与 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) 共存。
 
 **语言：** [English](README.md) · 简体中文（本页）· [文档索引](docs/README.md)
 
-## 项目意图（为什么要做这个插件）
+![Cache Hit 侧边栏](docs/assets/cache-hit-panel.v2.png)
 
-[opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) 已经很好地覆盖**主 session** 的 cache 可视化（Token 分布、节省估算、斜杠改配置等）。本仓库要补的是它**刻意不做或未覆盖**的部分：
+## 项目意图
 
-1. **子 agent 可观测性** — Task / explore 等会起子 session，需要把各子会话的 cache、token、费用**汇总**到侧栏。
-2. **一场对话一块面板** — 主 session 与子 agent 同屏；**Agents** 段可折叠收起。
-3. **离开 TUI 的分析** — 可选 **timeline JSONL**（按 assistant 轮次），便于画命中率曲线、jq 对账，而不去扒平台日志。
-4. **可复用 TUI 骨架** — `src/tui-panel/` 抽出来，方便做其它侧栏插件。
+[opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) 已经很好地覆盖**主 session** 的 cache 可视化（Token 分布、节省估算、斜杠命令配置等）。本项目的存在是因为其范围无法满足以下几种实际工作流：
 
-后续（侧栏 Timeline 段、指标窗口、嵌套子 agent）见 [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md)、[docs/zh-CN/design.md](docs/zh-CN/design.md)。
+1. **子 agent 可观测性** — OpenCode 会为 Task / explore agent 创建子 session；你需要**汇总**各子会话的 cache、token 和费用，而非仅主线程。
+2. **一场对话一块面板** — 主 session 的命中率/token/费用**与**可折叠 **Agents** 段（子 agent 汇总）同屏展示。
+3. **离开 TUI 的分析** — 可选 **timeline JSONL**（每 assistant 轮次），用于绘图、jq 对账，无需扒取平台日志。
+4. **可复用 TUI 组件** — `src/tui-panel/` 被提取出来，方便其他侧边栏插件复用与 visual-cache 相同的布局语言。
 
-## 致谢与借鉴说明
+后续规划（侧栏 Timeline 段、指标窗口、嵌套子 agent）见 [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md) 和 [docs/zh-CN/design.md](docs/zh-CN/design.md)。
 
-本插件是**独立项目**，并非 opencode-visual-cache 官方维护。侧栏布局、面板组件（`src/tui-panel/`）及与 visual-cache **共存**的策略，**大量借鉴**自 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache)：
+## 致谢
 
-- visual-cache：主 session **上下文 / token 分布预估**
-- cache-hit：**按轮次指标、成本、子 agent 汇总**
+本插件**并非** opencode-visual-cache 的一部分。其侧栏布局、面板组件（`src/tui-panel/`）及共存策略**大量借鉴**自 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache)。visual-cache 关注**主 session 上下文 / token 分布**；cache-hit 关注**按轮次指标和子 agent 汇总**。
 
-**缓存存活时间**功能（显示已存活时间 + 颜色状态）借鉴自 [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer)（作者：nero-sensei）。原插件提供独立的侧边栏倒计时；本插件将该概念直接集成到缓存命中面板中。
-
-## 截图
-
-![Cache Hit 侧边栏](docs/assets/cache-hit-panel.png)
-
-## 文档
-
-| 读者 | English | 中文 |
-|------|---------|------|
-| 使用者 | [README.md](README.md) | 本文 |
-| 维护者 | [docs/en/design.md](docs/en/design.md) | [docs/zh-CN/design.md](docs/zh-CN/design.md) |
-| 时间轴 / JSONL | [docs/en/timeline.md](docs/en/timeline.md) | [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md) |
-| TUI 面板框架 | [src/tui-panel/README.md](src/tui-panel/README.md) | [src/tui-panel/README.zh-CN.md](src/tui-panel/README.zh-CN.md) |
-| 贡献 / npm | [CONTRIBUTING.md](CONTRIBUTING.md) | — |
-| AI 维护 | [AGENTS.md](AGENTS.md) | — |
-| 索引 | [docs/README.md](docs/README.md) | |
+**缓存存活时间**功能（显示已缓存时长 + 颜色状态）借鉴自 [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer)（作者：nero-sensei）。原插件提供独立侧边栏倒计时；本插件将该概念直接集成到 cache-hit 面板中。
 
 ## 功能一览
 
-- **命中率**：会话累计 + 主块**单轮**命中率与趋势
-- **Token 明细**：缓存读/写/未命中/输出
+- **命中率**：会话累计 + **单轮**命中率与趋势（↑ / ↓ / `-`）
+- **Token 明细**：缓存读 / 写 / 未命中 / 输出（对齐 visual-cache 的行布局）
 - **费用**：多币种配置（`USD` / `CNY` / `EUR` / `GBP` / `JPY`）；从 provider 配置读取百万 token 单价及缓存节省
-- **子 agent**：**Agents** 段仅汇总**子 session**（UI 有范围提示）
-- **主 session + Agents**：主块始终显示；有子 agent 时出现可折叠的 **Agents** 段
-- **可选时间轴**：按天 JSONL 落盘
+- **子 agent**：**Agents** 段仅汇总**子 session**（UI 有范围标注）
+- **主 + Agents**：主块始终显示；有子 agent 时出现可折叠的 **Agents** 段
+- **可折叠段落**：Detail / Model（以及 Agents）；主题自适应的命中率条颜色
+- **国际化**：`display.lang` — `en` / `zh` / `auto`（配置文件，暂无斜杠命令）
+- **时间轴**（可选）：按天 JSONL，每 assistant 轮次一条，可用于 `jq` / 脚本分析
 
-## 与 visual-cache 对比
+## 与 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) 对比
 
-**默认独立使用**（主 session + 子 agent 同面板）。版式借鉴 visual-cache，**不依赖**该插件。
+**默认独立使用**（主 session + 子 agent 同面板）。布局借鉴 visual-cache，**不依赖**该插件。
 
-| | visual-cache | cache-hit |
-|---|----------------|-----------|
-| 主 session 上下文 / Token **分布**估算 | 有 | 无 |
-| 按角色 Token 分布 | 有 | 无 |
-| 缓存**节省**、百万 token **单价** | 有 | 有（读 provider 配置） |
-| **斜杠命令**改配置 | 有 | 仅配置文件 |
-| **子 agent** 汇总 | 无 | **有** |
-| 按次 **JSONL** | 无 | 可选 |
+| | visual-cache | opencode-cache-hit |
+|---|----------------|-------------------|
+| 主 session 上下文 / token **分布**估算 | 有 | 无（使用 visual-cache） |
+| 按角色 token 分布（system / tools / …） | 有 | 无 |
+| 缓存**节省**估算 | 有 | 有（从 provider 定价计算） |
+| 模型**百万 token** 单价 | 有 | 有（从 SDK provider 配置读取） |
+| **斜杠命令**（`/cache-lang`, `/cache-currency`, …） | 有 | 仅配置文件 |
+| 折叠状态持久化（`api.kv`） | 有 | 仅内存（不持久） |
+| **已加载 skill** 面板 | 有 | 无 |
+| **子 agent** 会话汇总 | 无 | **有** |
+| **合并**命中率（主 + 子） | 无 | 有子 agent 时显示 |
+| 按次 **JSONL** 导出 | 无 | 可选 `timeline` |
 
-完整英文对照表见 [README.md](README.md#comparison-with-opencode-visual-cache)。
+## 快速开始
 
-## 做什么、不做什么
+### 方式 A：OpenCode 命令面板（推荐）
 
-**本插件负责**
-
-- 主 session 与子 agent 的 cache / token / 成本聚合
-- 侧边栏 **Cache Hit** 面板（布局对齐 visual-cache）
-- 成本展示币种换算（默认 USD 成本 → CNY 显示）
-
-**本插件不负责**
-
-- 主 session 的「预估上下文 token」分布（由 visual-cache 提供）
-- 修改 OpenCode 计费；`msg.cost` 仍按 `opencode.json` 美元单价
-
-## 安装
-
-**方式一：** `Ctrl+P` → 输入 **install plugin** → 按 `Tab` 将范围切换为 **global**（默认是 local）→ 输入 `opencode-cache-hit@latest` → 回车。
+`Ctrl+P` → 输入 **install plugin** → 按 `Tab` 切换范围为 **global**（默认是 local）→ 输入 `opencode-cache-hit@latest` → 回车。
 
 全局插件安装到 `~/.cache/opencode/packages/opencode-cache-hit@latest/`。在 `~/.config/opencode/cache-hit.json` 创建配置：
 
-**方式二：** 编辑 `~/.config/opencode/tui.json` / `tui.jsonc`：
+### 方式 B：手动
 
-```json
+创建或编辑 `~/.config/opencode/tui.json` / `tui.jsonc`：
+
+```jsonc
 {
-  "plugin": ["./plugins/opencode-cache-hit"]
+  "$schema": "https://opencode.ai/tui.json",
+  "plugin": ["opencode-cache-hit@latest"]
 }
 ```
 
-复制 `cache-hit.config.example.json` → `cache-hit.config.json`（与 `index.tsx` 同目录）。详见下文「[配置文件](#配置文件)」。
+本地开发：将 npm 名称替换为 `"./plugins/opencode-cache-hit"`。
+
+复制 `cache-hit.config.example.json` → `~/.config/opencode/cache-hit.json`（推荐）或放在插件根目录旁。更改插件代码或配置后**重启 OpenCode**。
 
 | 安装方式 | 更新后 |
 |----------|--------|
-| 本地路径 | 重启 |
-| npm `@latest` | 重启；可删 `~/.cache/opencode/packages/opencode-cache-hit@latest` |
+| 本地 `./plugins/...` | 完全重启 |
+| npm `@latest` | 重启；如果 UI 未更新，删除 `~/.cache/opencode/packages/opencode-cache-hit@latest` |
 
-加载失败：`~/.local/share/opencode/log/`（搜 `cache-hit`）。
+加载失败：`~/.local/share/opencode/log/`（搜索 `cache-hit` 或 `failed to load tui plugin`）。
 
 ## 配置
 
-### 成本（USD → 人民币）
+### 成本展示（USD → CNY 示例）
 
 ```json
 {
@@ -114,32 +95,41 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 }
 ```
 
-定价与展示同为美元：`"currency": "USD", "costUnit": "USD"`。
+| 字段 | 含义 |
+|-------|-------|
+| `costUnit` | `msg.cost` 的币种（通常为 `USD`） |
+| `currency` | 侧边栏展示币种 |
+| `rate` | `costUnit` → `currency` 的汇率 |
+
+当无需换算时使用 `"currency": "USD", "costUnit": "USD"`。
+
+支持的展示币种：`USD`、`CNY`、`EUR`、`GBP`、`JPY`（见 `cache-hit.config.example.json`）。暂未实现类似 visual-cache 的 `/cache-currency` 斜杠命令。
 
 ### 展示（`display`）
 
 ```json
 "display": {
-  "lang": "zh",
+  "lang": "en",
   "panelBorder": true
 }
 ```
 
 | 字段 | 默认 | 含义 |
-|------|------|------|
+|-------|---------|------|
 | `lang` | `"en"` | `en` / `zh` / `auto` |
 | `panelBorder` | `true` | 外框与内边距 |
-| `mainHitLabel` | （i18n） | 可选，覆盖 Hit 行前缀 |
+| `mainHitLabel` | （i18n） | 可选，覆盖 Hit 行标签 |
 
-**Agents 段**不含主 session token/费用（标题有「仅子会话」提示）；不需要看子 agent 时折叠 **Agents** 即可。
+**Agents** 段仅汇总**子 session**，不含主 session（详见 `agentsScopeHint`）。主 session 指标始终在上方块中；折叠 **Agents** 可节省空间。
 
 ### 时间轴日志（`timeline`，默认关闭）
 
-详见 [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md)。
+每 assistant 轮次 → JSONL。详见 [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md)。
 
 ```json
 "timeline": {
   "enabled": true,
+  "dir": "",
   "rotateMaxBytes": 16777216,
   "retainRotated": 5,
   "maxAgeDays": 30,
@@ -147,31 +137,104 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 }
 ```
 
-| 字段 | 代码默认 | 含义 |
-|------|----------|------|
-| `dir` | `""` | `logs/timeline-YYYY-MM-DD.jsonl` |
-| `retainRotated` | `5` | 同日大小轮转备份数 |
-| `maxLogFiles` | `0` | 超限时删**最早日期**日志 |
-
-```fish
-set log ~/.config/opencode/plugins/opencode-cache-hit/logs/timeline-(date +%Y-%m-%d).jsonl
-tail -f $log
-# 时间字段为 ISO 8601 含本地时区（如 "2024-05-30T08:00:00.000+08:00"）
-jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' $log
-```
-
-轮转与清理：[docs/zh-CN/timeline.md § 轮转与清理](docs/zh-CN/timeline.md#轮转与清理)。
-
-## 配置文件
-
-将 `cache-hit.config.example.json` 复制为 `cache-hit.config.json`，放在包根目录（与 `index.tsx` 同级）。修改后需重启 OpenCode。
+| 字段 | 默认 | 含义 |
+|-------|---------|-------|
+| `enabled` | `false` | 总开关 |
+| `dir` | `""` | `logs/timeline-YYYY-MM-DD.jsonl`（插件根目录下） |
+| `rotateMaxBytes` | `0` | 同日大小轮转至 `.jsonl.1` |
+| `retainRotated` | `5` | 每日保留的轮转备份数 |
+| `maxLogFiles` | `0` | 文件数量上限；删除**最早**日志 |
 
 ```bash
-cd ~/.cache/opencode/packages/opencode-cache-hit@latest   # 或本地插件路径
-cp cache-hit.config.example.json cache-hit.config.json
+LOG=~/.config/opencode/plugins/opencode-cache-hit/logs/timeline-$(date +%Y-%m-%d).jsonl
+tail -f "$LOG"
+# 时间字段为 ISO 8601 字符串，含本地时区（如 "2024-05-30T08:00:00.000+08:00"）
+jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]|@tsv' "$LOG"
 ```
 
-npm 打包、本地路径等说明见 [CONTRIBUTING.md](CONTRIBUTING.md)（英文）。
+轮转与清理：[docs/zh-CN/timeline.md#轮转与清理](docs/zh-CN/timeline.md#轮转与清理)。图表工具：[scripts/README.md](scripts/README.md)。
+
+### 缓存 TTL（`cacheTTL`，默认开启）
+
+显示 prompt cache 已存活时间。超过 TTL 时颜色变化：
+
+- 绿色：已存活 < TTL
+- 黄色：TTL ≤ 已存活 < 2×TTL
+- 红色：已存活 ≥ 2×TTL
+
+```json
+"cacheTTL": {
+  "enabled": true,
+  "providers": {
+    "anthropic": "5m",
+    "openai": "5m",
+    "deepseek": "2h",
+    "google": "1h"
+  }
+}
+```
+
+| 字段 | 默认 | 含义 |
+|-------|---------|-------|
+| `enabled` | `true` | 总开关 |
+| `providers` | `{}` | 每个 provider 的 TTL（或 `provider:model`）。可读格式：`30s`、`5m`、`1.5h` |
+
+**内置默认值**（配置中未指定时使用）：
+
+| Provider | 默认 TTL | 来源 |
+|----------|----------|------|
+| anthropic | 5 分钟 | [Anthropic 文档](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) |
+| openai | 5 分钟 | [OpenAI 文档](https://platform.openai.com/docs/guides/prompt-caching) |
+| deepseek | 2 小时 | [DeepSeek 文档](https://api-docs.deepseek.com/guides/kv_cache) |
+| google | 1 小时 | [Google 文档](https://ai.google.dev/api/caching) |
+| xai | 5 分钟 | [xAI 文档](https://docs.x.ai/developers/advanced-api-usage/prompt-caching) |
+| minimax | 5 分钟 | [MiniMax 文档](https://platform.minimax.io/docs/api-reference/text-prompt-caching) |
+| xiaomi | 5 分钟 | 隐式缓存 |
+| qwen | 5 分钟 | 隐式缓存 |
+| moonshot | 5 分钟 | 隐式缓存 |
+
+**默认 TTL**：上表未列出的 provider 均为 5 分钟。颜色基于已存活时间与 TTL 的比值：绿色（< TTL）、黄色（TTL–2×TTL）、红色（≥ 2×TTL）。
+
+## 更新
+
+OpenCode 可能在首次安装时[缓存插件](https://github.com/anomalyco/opencode/issues/6774)且不自动刷新 npm 版本。
+
+```bash
+rm -rf ~/.cache/opencode/packages/opencode-cache-hit@latest
+```
+
+然后通过 `Ctrl+P` → install plugin 重装并**重启 OpenCode**。
+
+## 兼容性
+
+模型无关：任何在消息中暴露 assistant `tokens` / `cost` 的 OpenCode provider 均可（DeepSeek、Claude、GPT 等）。数据来自 OpenCode session API，与 visual-cache 一致。
+
+**需要**支持 TUI 插件槽位的 OpenCode（`@opencode-ai/plugin` ≥ 1.14）。可与 visual-cache 共存；运行时除 `package.json` 中声明的 peer 依赖外无额外依赖。
+
+## 文档索引
+
+| 读者 | English | 中文 |
+|----------|---------|------|
+| 使用者 | [README.md](README.md) | 本文 |
+| 维护者 | [docs/en/design.md](docs/en/design.md) | [docs/zh-CN/design.md](docs/zh-CN/design.md) |
+| 时间轴 / JSONL | [docs/en/timeline.md](docs/en/timeline.md) | [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md) |
+| TUI 面板复用 | [src/tui-panel/README.md](src/tui-panel/README.md) | [src/tui-panel/README.zh-CN.md](src/tui-panel/README.zh-CN.md) |
+| 贡献 / npm | [CONTRIBUTING.md](CONTRIBUTING.md) | — |
+| AI 维护指南 | [AGENTS.md](AGENTS.md) | — |
+| 总索引 | [docs/README.md](docs/README.md) | |
+
+## 项目结构
+
+```
+index.tsx
+cache-hit.config.example.json
+src/
+  plugin.tsx              # sidebar_content 插槽
+  sidebar-host.tsx        # 消息、子会话同步、timeline
+  widget.tsx
+  stats.ts / timeline/ / tui-panel/
+tests/
+```
 
 ## 开发
 
@@ -179,11 +242,7 @@ npm 打包、本地路径等说明见 [CONTRIBUTING.md](CONTRIBUTING.md)（英�
 bun test
 ```
 
-架构：[docs/zh-CN/design.md](docs/zh-CN/design.md)。贡献 / 发布：[CONTRIBUTING.md](CONTRIBUTING.md)。AI 维护：[AGENTS.md](AGENTS.md)。
-
-## 更新
-
-若 npm 版本不刷新，参见 [OpenCode #6774](https://github.com/anomalyco/opencode/issues/6774)，删除 `~/.cache/opencode/packages/opencode-cache-hit@latest` 后重装并重启。
+环境搭建、PR 规范、npm 发布见 [CONTRIBUTING.md](CONTRIBUTING.md)。架构：[docs/zh-CN/design.md](docs/zh-CN/design.md)。
 
 ## License
 
