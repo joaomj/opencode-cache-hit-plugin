@@ -57,8 +57,8 @@ sequenceDiagram
 
   Slot->>Host: sessionId, display, api
   Host->>API: session.list → childIds
-  API-->>Host: message.updated
-  Host->>Host: refreshTick++
+  API-->>Host: message.updated { info: Message }
+  Host->>Host: refreshTick++, timeline.handleMessage(info)
   Host->>API: session.messages(sid / cid)
   Host->>W: main, messages, subAgents
   W->>W: aggregate / format / TuiPanel
@@ -223,7 +223,7 @@ flowchart TD
 | 指标切换 | 累计 / 最近 N 轮 / 滑动窗口；与时间轴 Phase 3 联动 | timeline.md § Phase 3 |
 | 子 agent | 递归子 session、按 agent 类型过滤 | timeline.md § 风险；侧栏另议 |
 
-实现日志时继续复用 `message.updated` + `messages()`；落盘异步、勿阻塞 TUI（见 timeline.md）。
+实现日志时使用 `message.updated` 事件直接驱动的 `handleMessage()`；落盘异步、勿阻塞 TUI（见 timeline.md）。
 
 ## 插件缓存
 

@@ -109,6 +109,7 @@ function isValidRecord(v: unknown): v is LlmCallRecord {
   const r = v as Record<string, unknown>
   if (r.schema !== 1) return false
   if (typeof r.created !== "string") return false
+  if (new Date(r.created).getFullYear() < 2024) return false
   if (typeof r.sessionId !== "string" || typeof r.rootSessionId !== "string") return false
   if (r.scope !== "main" && r.scope !== "child") return false
   for (const k of ["input", "output", "reasoning", "cacheRead", "cacheWrite", "cost"] as const) {
@@ -122,11 +123,12 @@ function isValidRecord(v: unknown): v is LlmCallRecord {
 
 function sortKey(r: LlmCallRecord): number {
   const ts = r.completedAt ?? r.created
-  return new Date(ts).getTime()
+  return new Date(ts).getTime() || 0
 }
 
 async function loadRecords(paths: string[]): Promise<LlmCallRecord[]> {
   const records: LlmCallRecord[] = []
+  const seenKeys = new Set<string>()
   for (const p of paths) {
     if (!existsSync(p)) continue
     const text = await Bun.file(p).text()
@@ -135,7 +137,11 @@ async function loadRecords(paths: string[]): Promise<LlmCallRecord[]> {
       if (!s) continue
       try {
         const parsed: unknown = JSON.parse(s)
-        if (isValidRecord(parsed)) records.push(parsed)
+        if (!isValidRecord(parsed)) continue
+        // Deduplicate by messageKey — handles historical duplicates from pre-fix logs
+        if (seenKeys.has(parsed.messageKey)) continue
+        seenKeys.add(parsed.messageKey)
+        records.push(parsed)
       } catch {
         /* skip malformed */
       }

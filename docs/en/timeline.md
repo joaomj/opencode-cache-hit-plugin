@@ -131,7 +131,7 @@ Example values above; code defaults below (`enabled: false`, rotation `0` except
 1. Optional size roll **before** append.
 2. `appendFile` one JSON line.
 3. Optional line trim **after** append.
-4. Async flush in `queueMicrotask`; `flushedKeys` dedupe by `messageKey` (not cleared on session switch; cleared on date change).
+4. Event-driven: `message.updated` → `handleMessage()` → fire-and-forget `appendFile`. No polling, no dedup.
 
 ## Rotation and retention
 
@@ -169,11 +169,11 @@ Does **not** match legacy `ses_*.jsonl` names.
 
 New filename after midnight; previous days remain until cleanup runs.
 
-### Dedup and session switch
+### Collection
 
-- One append per `messageKey` per process (`flushedKeys`).
-- Switching main session: same day file; filter by `rootSessionId`.
-- **Restart** clears `flushedKeys`; completed messages may be written again (no persistent dedupe yet).
+- `message.updated` event carries the full `Message` object. The collector subscribes directly — no polling, no dedup.
+- Switching main session: `resetForRootChange()` clears in-memory cache; events for the new session arrive naturally.
+- Restarts are safe: messages before startup were already written to JSONL in the previous session. No replay, no scan.
 
 ## Runtime wiring
 
@@ -181,19 +181,18 @@ New filename after midnight; previous days remain until cleanup runs.
 sequenceDiagram
   participant E as message.updated
   participant H as sidebar-host
-  participant B as timeline/build
+  participant C as timeline/collector
   participant W as timeline/writer
 
-  E->>H: refreshTick++
-  H->>B: debounce 500ms buildCallRecords
-  alt enabled and complete and not flushed
-    B->>W: append JSONL
+  E->>H: { sessionID, info: Message }
+  H->>C: handleMessage(sessionID, info)
+  alt assistant and complete
+    C->>W: append JSONL (fire-and-forget)
   end
 ```
 
-- Child ids from `child-session-sync` / `session.list`; timeline only reads `messages()`.
-- Debounce 500ms when enabled.
-- Scope: current TUI root session + its children.
+- Child ids from `child-session-sync` / `session.list`; timeline writes main and child sessions from events.
+- No debounce, no polling. Scope: current TUI root session + its children.
 
 ## UI phases
 

@@ -9,7 +9,6 @@ import type { AssistantMessage } from "./types.ts"
 import type { CacheTTLConfig } from "./plugin-config.ts"
 import { parseDuration } from "./plugin-config.ts"
 import type { PanelPalette, PanelLayout } from "./tui-panel/index.ts"
-import { TuiMetricRow } from "./tui-panel/index.ts"
 
 const SECOND = 1000
 const MINUTE = 60 * SECOND
@@ -121,13 +120,9 @@ export function CacheTTLView(props: {
 
   return (
     <Show when={elapsed() !== null}>
-      <TuiMetricRow
-        pal={props.pal}
-        layout={props.layout}
-        label={props.label}
-        value={`${statusIcon()} ${formatElapsed(elapsed()!)}`}
-        fg={statusColor()}
-      />
+      <text fg={statusColor()}>
+        {props.layout.row(props.label, `${statusIcon()} ${formatElapsed(elapsed()!)}`, "")}
+      </text>
     </Show>
   )
 }

@@ -25,18 +25,6 @@ export function messageKeyFor(msg: AssistantMessage, sessionId: string): string 
   return `${sessionId}:${created}:${msg.modelID ?? ""}`
 }
 
-export function sortKeyForRecord(r: LlmCallRecord): number {
-  const ts = r.completedAt ?? r.created
-  return new Date(ts).getTime()
-}
-
-export function mergeAndSortRecords(chunks: readonly LlmCallRecord[][]): LlmCallRecord[] {
-  const all = chunks.flat()
-  const keyed = all.map(r => ({ r, k: sortKeyForRecord(r) }))
-  keyed.sort((a, b) => a.k - b.k)
-  return keyed.map(x => x.r)
-}
-
 export function assistantMessageToRecord(
   msg: AssistantMessage,
   sessionId: string,
@@ -70,23 +58,5 @@ export function assistantMessageToRecord(
     hitPercent: perMessageHitPercent(msg),
     skippedForHit,
   }
-}
-
-export function buildCallRecords(
-  sessionId: string,
-  rootSessionId: string,
-  scope: "main" | "child",
-  messages: readonly AssistantMessage[],
-  opts?: { logSummaryMessages?: boolean; recordedAt?: number },
-): LlmCallRecord[] {
-  const now = opts?.recordedAt ?? Date.now()
-  const logSummary = opts?.logSummaryMessages !== false
-  const out: LlmCallRecord[] = []
-  for (const msg of messages) {
-    if (!logSummary && msg.summary === true) continue
-    const rec = assistantMessageToRecord(msg, sessionId, rootSessionId, scope, now)
-    if (rec) out.push(rec)
-  }
-  return out
 }
 

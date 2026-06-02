@@ -16,6 +16,7 @@ import { loadPluginConfig } from "./load-config.ts"
 /**
  * Session-scoped sidebar host. Bumps `refreshTick` on message.updated (same as visual-cache)
  * so memos re-read api.state.session.messages.
+ * Timeline writes are event-driven: message.updated → handleMessage → appendFile.
  */
 export function CacheHitSidebarHost(props: {
   sessionId: string
@@ -44,8 +45,6 @@ export function CacheHitSidebarHost(props: {
     config: props.timeline,
     getRootSessionId: () => props.sessionId,
     getChildIds: childIds,
-    getMessages: (id) =>
-      (props.api.state.session.messages(id) ?? []) as AssistantMessage[],
   })
   onCleanup(() => timeline.dispose())
 
@@ -56,7 +55,6 @@ export function CacheHitSidebarHost(props: {
     setChildIds,
     onSynced: () => {
       bumpRefresh()
-      timeline.schedule()
     },
   })
   onCleanup(() => childSync.dispose())
@@ -97,15 +95,17 @@ export function CacheHitSidebarHost(props: {
     timeline.resetForRootChange()
     if (sid) {
       childSync.loadChildren()
-      timeline.schedule()
     }
   })
 
   createEffect(() => {
     const unsub = props.api.event.on("message.updated", (event) => {
       bumpRefresh()
-      childSync.onForeignSessionActivity(event.properties?.info?.sessionID)
-      timeline.schedule()
+      const sid = event.properties?.info?.sessionID
+      childSync.onForeignSessionActivity(sid)
+      if (sid && event.properties?.info) {
+        timeline.handleMessage(sid, event.properties.info as AssistantMessage)
+      }
     })
     onCleanup(() => unsub?.())
   })

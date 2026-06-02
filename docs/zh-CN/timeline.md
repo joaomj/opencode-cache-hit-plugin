@@ -153,7 +153,7 @@ export function buildCallRecords(
 1. 可选 `rotateMaxBytes`：写**前**若当日活跃文件 ≥ 阈值 → 链式 rename（见 § 轮转与清理）。
 2. `appendFile` 一行 JSON。
 3. 可选 `maxLinesPerFile`：写**后**读回活跃文件，只保留最后 N 行（**删行**，不生成 `.1`）。
-4. 异步：`collector` 在 `queueMicrotask` 里写盘；`flushedKeys` 按 `messageKey` 去重（切换主 session **不**清空；跨日换文件名时清空）。
+4. 事件驱动：`message.updated` → `handleMessage()` → fire-and-forget `appendFile`。无轮询，无去重。
 
 ## 轮转与清理
 
@@ -193,11 +193,11 @@ export function buildCallRecords(
 
 午夜后自动写入新文件名；昨日文件保留，直至上述清理策略删除。
 
-### 去重与切换 session
+### 收集
 
-- 同一 `messageKey` 只 append 一次（进程内 `flushedKeys`）。
-- 切换 TUI 主 session：仍写**同日**文件，用 `rootSessionId` 过滤；**不**因切换而重复写同一 `messageKey`。
-- 插件重启后 `flushedKeys` 为空，可能对**同一批已完成消息**再写一遍（若需避免，需另做持久化去重，当前未做）。
+- `message.updated` 事件携带完整 `Message` 对象。collector 直接订阅事件——无轮询，无去重。
+- 切换主 session：`resetForRootChange()` 清空内存缓存；新 session 的事件自然到达。
+- 重启安全：启动前的消息已在上次 session 中写入 JSONL。无需回放，无需扫描。
 
 ## 运行时接入
 
@@ -205,20 +205,18 @@ export function buildCallRecords(
 sequenceDiagram
   participant E as message.updated
   participant H as sidebar-host
-  participant B as timeline/build
+  participant C as timeline/collector
   participant W as timeline/writer
 
-  E->>H: refreshTick++（现有）
-  H->>B: debounce 500ms buildCallRecords(main+children)
-  B->>H: 更新 memoryRecords（Signal）
-  alt enabled and isComplete and not flushed
-    B->>W: append JSONL
+  E->>H: { sessionID, info: Message }
+  H->>C: handleMessage(sessionID, info)
+  alt assistant and complete
+    C->>W: append JSONL（fire-and-forget）
   end
 ```
 
-- **与 `child-session-sync` 分工**：子 id 列表仍由 `session.list` 负责；时间轴只读 `messages()`，不额外 list。
-- **Debounce**：500ms（比 child list 的 200ms 略长，减少流式写盘）；仅 `timeline.enabled` 时注册。
-- **作用域**：只记录「当前 TUI 绑定的 `rootSessionId`」及其子 session；落盘路径按**当天**不变，切换主 session 仍写同一日文件。
+- **与 `child-session-sync` 分工**：子 id 列表仍由 `session.list` 负责；时间轴从事件中写 main 和 child session。
+- 无 debounce，无轮询。**作用域**：当前 TUI root session + 其子 session。
 
 ## UI（分阶段）
 

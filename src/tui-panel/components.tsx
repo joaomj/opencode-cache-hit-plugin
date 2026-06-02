@@ -134,9 +134,8 @@ export function TuiMetricRow(props: {
   unit?: string
   fg?: string
 }) {
-  const fg = props.fg ?? props.pal.muted
   return (
-    <text fg={fg}>
+    <text fg={props.fg ?? props.pal.muted}>
       {props.layout.row(props.label, props.value, props.unit ?? "")}
     </text>
   )

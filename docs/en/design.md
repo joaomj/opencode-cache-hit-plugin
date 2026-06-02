@@ -57,8 +57,8 @@ sequenceDiagram
 
   Slot->>Host: sessionId, display, api
   Host->>API: session.list → childIds
-  API-->>Host: message.updated
-  Host->>Host: refreshTick++
+  API-->>Host: message.updated { info: Message }
+  Host->>Host: refreshTick++, timeline.handleMessage(info)
   Host->>API: session.messages(sid / cid)
   Host->>W: main, messages, subAgents
   W->>W: aggregate / format / TuiPanel
