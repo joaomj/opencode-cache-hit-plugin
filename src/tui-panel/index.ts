@@ -19,7 +19,12 @@ export {
   padBeforeTitleSummary,
 } from "./layout.ts"
 
-export { buildPanelPalette, themeColorToHex, type PanelPalette } from "./palette.ts"
+export {
+  buildPanelPalette,
+  themeColorToHex,
+  toneBrandHex,
+  type PanelPalette,
+} from "./palette.ts"
 
 export {
   createPanelLayout,

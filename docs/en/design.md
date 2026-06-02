@@ -77,6 +77,7 @@ sequenceDiagram
 | `stats.ts` | Pure aggregation (no UI) |
 | `session-list.ts` | Parse `session.list`, `childSessionIdsForParent` |
 | `format-cost.ts` / `format-tokens.ts` / `format-cache-ui.ts` | Display formatting (`computeHitBarWidth` lives in `tui-panel/layout.ts`) |
+| `format-model.ts` | Sub-agent row label (`formatSubAgentLabel`) and vendor brand colors (`modelRowColor`) |
 | `message-timing.ts` | SDK time fields |
 | `timeline/` | Per-call JSONL (`records` / `writer` / `collector`) |
 | `plugin-config.ts` / `load-config.ts` | Config normalization |
@@ -88,9 +89,9 @@ Reusable **page** skeleton aligned with visual-cache (layout, colors, foldable s
 | Module | Role |
 |--------|------|
 | `layout.ts` | Column widths, `justifyRow`, `computeHitBarWidth`, separators |
-| `palette.ts` | Theme → panel palette |
+| `palette.ts` | Theme → panel palette; `toneBrandHex` for vendor colors on dark panels |
 | `use-panel-layout.ts` | `createPanelLayout`, `createSectionFold` |
-| `components.tsx` | `TuiPanel`, `TuiHitRow`, `TuiMetricRow`, … (`@opentui/solid`) |
+| `components.tsx` | `TuiPanel`, `TuiHitRow`, `TuiMetricRow` (`labelFg` / `valueFg` split colors), … (`@opentui/solid`) |
 | `index.ts` | Barrel export |
 
 Import `layout.ts` / `palette.ts` directly from non-JSX code (e.g. `use-cache-hit-metrics`) so `bun test` smoke tests do not pull JSX.
@@ -129,6 +130,23 @@ flowchart TD
 | Main session assistant messages | **No** (still in `mainSnap` when hidden in UI) |
 
 The UI shows `agentsScopeHint` (“sub-sessions only”). This complements visual-cache’s main-session view—it is not a missing-aggregation bug.
+
+### Sub-agent row display
+
+When multiple child sessions run in parallel, each active sub-agent gets a metric row under **Agents** (see screenshot `docs/assets/cache-hit-panel.v3.png`).
+
+| Aspect | Behavior |
+|--------|----------|
+| **Purpose** | Distinguish which child session and which model in a narrow sidebar |
+| **Label text** | `{displayModelName} …{sessionIdTail}` — same naming rules as the main **Model** row (`shortModelName` + date-suffix strip); **no** semantic nicknames (`ds-flash`, etc.) |
+| **Truncation** | `gauge` ≈ measured panel width − border gutter; label budget subtracts right-side cost/tokens. Prefer keeping the **model prefix**; shrink ID tail (6 → 4 chars) before dropping the tail |
+| **Label color** | Approximate **vendor brand** hex (`MODEL_BRAND_HEX` in `format-model.ts`), passed through `toneBrandHex` for legibility on dark terminals |
+| **Value color** | `muted` — separate from label so row cost is not confused with Agents total **Cost** (`success` green) |
+| **Family match** | `MODEL_FAMILY_RULES` (claude, deepseek, openai, gemini, qwen, glm, kimi, minimax, grok, mimo, meta, mistral); matching is **case-insensitive** on model slug and `providerID` |
+| **Unknown models** | Stable hash → neutral fallback hues (never `success`) |
+| **Config** | No `cache-hit.json` keys in v1; extend `MODEL_FAMILY_RULES` / `MODEL_BRAND_HEX` in code |
+
+Implementation: `agents-view.tsx` calls `formatSubAgentLabel` + `modelRowColor`; `TuiMetricRow` uses `labelFg` / `valueFg`.
 
 ## Aggregation and refresh
 

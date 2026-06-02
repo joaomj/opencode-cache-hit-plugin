@@ -77,6 +77,7 @@ sequenceDiagram
 | `stats.ts` | 纯函数聚合（无 UI） |
 | `session-list.ts` | `session.list` 响应解析、`childSessionIdsForParent` |
 | `format-cost.ts` / `format-tokens.ts` / `format-cache-ui.ts` | 展示格式化（**不含** `computeHitBarWidth`，其在 `tui-panel/layout.ts`） |
+| `format-model.ts` | 子 agent 行 label（`formatSubAgentLabel`）与厂商品牌色（`modelRowColor`） |
 | `message-timing.ts` | SDK 时间字段辅助 |
 | `timeline/` | 按次 JSONL（`records` / `writer` / `collector`） |
 | `plugin-config.ts` / `load-config.ts` | 配置归一化与默认值 |
@@ -88,9 +89,9 @@ sequenceDiagram
 | 模块 | 职责 |
 |------|------|
 | `layout.ts` | 视觉列宽、`justifyRow`、`computeHitBarWidth`、分隔线 |
-| `palette.ts` | 主题色 → 面板调色板 |
+| `palette.ts` | 主题色 → 面板调色板；`toneBrandHex` 用于深色面板上的厂商色 |
 | `use-panel-layout.ts` | `createPanelLayout`（测宽）、`createSectionFold` |
-| `components.tsx` | `TuiPanel`、`TuiHitRow`、`TuiMetricRow` 等（需 `@opentui/solid`） |
+| `components.tsx` | `TuiPanel`、`TuiHitRow`、`TuiMetricRow`（`labelFg` / `valueFg` 分段上色）等（需 `@opentui/solid`） |
 | `index.ts` | 对外 barrel |
 
 纯逻辑模块（如 `use-cache-hit-metrics`）应从 `layout.ts` / `palette.ts` 直接 import，避免经 `index.ts` 拉入 JSX（便于 `bun test` 冒烟）。
@@ -129,6 +130,23 @@ flowchart TD
 | 主 session 的 assistant 消息 | **否**（即使在 auto 下仍会计入 `mainSnap`，仅 UI 隐藏主块） |
 
 主 session 若仍有编排类调用，其 token/费用不会出现在 Agents 合计中；UI 通过 `agentsScopeHint`（「仅子会话 / sub-sessions」）标明。与 visual-cache 对主 session 的展示互补，不是漏算 bug。
+
+### 子 session 行展示
+
+多个子 session 并行时，**Agents** 段下每个有活动的子 session 一行（见截图 `docs/assets/cache-hit-panel.v3.png`）。
+
+| 方面 | 行为 |
+|------|------|
+| **目的** | 在窄侧栏中辨认「哪条子 session、用的什么模型」 |
+| **Label 文案** | `{displayModelName} …{sessionIdTail}` — 与主块 **Model** 行同源（`shortModelName` + 去日期尾）；**不做**语义缩写（如 `ds-flash`） |
+| **截断** | `gauge` ≈ 实测面板宽 − 边框 gutter；label 预算再减去右侧 cost/tok。优先保留**模型前缀**；先缩短 ID 尾（6 → 4 字符） |
+| **Label 颜色** | 厂商近似品牌色（`MODEL_BRAND_HEX`，经 `toneBrandHex` 压低饱和度以适配深色终端） |
+| **金额颜色** | `muted`，与 label 分开，避免与 Agents 合计 **Cost** 的 `success` 绿色混淆 |
+| **Family 匹配** | `MODEL_FAMILY_RULES`（claude、deepseek、openai、gemini、qwen、glm、kimi、minimax、grok、mimo、meta、mistral）；模型 slug 与 `providerID` **大小写不敏感** |
+| **未知模型** | 稳定 hash → 中性 fallback 色（不用 `success`） |
+| **配置** | v1 无 `cache-hit.json` 项；在代码中扩展 `MODEL_FAMILY_RULES` / `MODEL_BRAND_HEX` |
+
+实现：`agents-view.tsx` 调用 `formatSubAgentLabel`、`modelRowColor`；`TuiMetricRow` 使用 `labelFg` / `valueFg`。
 
 ## 聚合与刷新
 

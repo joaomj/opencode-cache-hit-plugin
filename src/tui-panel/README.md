@@ -69,7 +69,7 @@ export function MySidebar(props: { theme: Record<string, unknown> }) {
 | `TuiPanel` | Outer border + padding |
 | `TuiPanelTitle` | Foldable title; optional `collapsed` summary |
 | `TuiSection` | `▼` section header + separator fill |
-| `TuiMetricRow` | Label left, value (+ unit) right |
+| `TuiMetricRow` | Label left, value (+ unit) right; optional `labelFg` / `valueFg` for split colors |
 | `TuiHitRow` | Hit bar + % + trend |
 | `computeHitBarWidth` | Dynamic bar width |
 

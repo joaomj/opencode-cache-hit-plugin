@@ -79,6 +79,11 @@ export function themeColorToHex(raw: unknown, fallback: string): string {
   return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("")
 }
 
+/** Tone a vendor brand hex for dark TUI panels (same max saturation as theme colors). */
+export function toneBrandHex(hex: string, fallback: string): string {
+  return desaturateTo(hex, MAX_SAT, fallback)
+}
+
 export function buildPanelPalette(theme: Record<string, unknown>): PanelPalette {
   const sat = (k: string, fb: string) => desaturateTo(theme[k], MAX_SAT, fb)
   return {

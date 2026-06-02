@@ -6,7 +6,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 **语言：** [English](README.md) · 简体中文（本页）· [文档索引](docs/README.md)
 
-![Cache Hit 侧边栏](docs/assets/cache-hit-panel.v2.png)
+![Cache Hit 侧边栏](docs/assets/cache-hit-panel.v3.png)
 
 ## 项目意图
 
@@ -30,7 +30,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 - **命中率**：会话累计 + **单轮**命中率与趋势（↑ / ↓ / `-`）
 - **Token 明细**：缓存读 / 写 / 未命中 / 输出（对齐 visual-cache 的行布局）
 - **费用**：多币种配置（`USD` / `CNY` / `EUR` / `GBP` / `JPY`）；从 provider 配置读取百万 token 单价及缓存节省
-- **子 agent**：**Agents** 段仅汇总**子 session**（UI 有范围标注）
+- **子 agent**：**Agents** 段仅汇总**子 session**（UI 有范围标注）；每行显示模型名 + session ID 后缀，**label 按厂商近似品牌色**，金额为灰色
 - **主 + Agents**：主块始终显示；有子 agent 时出现可折叠的 **Agents** 段
 - **可折叠段落**：Detail / Model（以及 Agents）；主题自适应的命中率条颜色
 - **国际化**：`display.lang` — `en` / `zh` / `auto`（配置文件，暂无斜杠命令）
@@ -120,7 +120,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 | `panelBorder` | `true` | 外框与内边距 |
 | `mainHitLabel` | （i18n） | 可选，覆盖 Hit 行标签 |
 
-**Agents** 段仅汇总**子 session**，不含主 session（详见 `agentsScopeHint`）。主 session 指标始终在上方块中；折叠 **Agents** 可节省空间。
+**Agents** 段仅汇总**子 session**，不含主 session（详见 `agentsScopeHint`）。主 session 指标始终在上方块中；折叠 **Agents** 可节省空间。各子 session 行与主块 **Model** 行同源模型名（侧栏窄时会截断）；详见 [docs/zh-CN/design.md](docs/zh-CN/design.md)「子 session 行展示」。
 
 ### 时间轴日志（`timeline`，默认关闭）
 

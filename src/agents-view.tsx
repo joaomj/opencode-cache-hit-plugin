@@ -5,14 +5,9 @@ import type { CacheHitMetrics } from "./use-cache-hit-metrics.ts"
 import { aggregateSubAgents } from "./stats.ts"
 import { computeSubsSaved } from "./pricing.ts"
 import { formatTokenCount } from "./format-tokens.ts"
-import { TuiMetricRow, truncateVisual, type PanelLayout } from "./tui-panel/index.ts"
+import { formatSubAgentLabel, modelRowColor } from "./format-model.ts"
+import { TuiMetricRow, type PanelLayout } from "./tui-panel/index.ts"
 import type { ProviderInfo, SubAgentSummary } from "./types.ts"
-
-function agentRowLabel(id: string, gauge: number): string {
-  const tail = id.length > 10 ? id.slice(-8) : id
-  const raw = id.length > 10 ? "\u2026" + tail : tail
-  return truncateVisual(raw, Math.max(6, gauge - 14))
-}
 
 function subHasActivity(sub: SubAgentSummary): boolean {
   return sub.cost > 0 || sub.cacheRead > 0 || sub.cacheWrite > 0 || sub.input > 0
@@ -57,9 +52,14 @@ export function AgentsView(props: {
             <TuiMetricRow
               pal={m.pal()}
               layout={layout}
-              label={"  " + agentRowLabel(sub.id, layout.gauge())}
+              label={
+                "  " +
+                formatSubAgentLabel(sub, layout.gauge(), props.formatCost, m.t().tok)
+              }
               value={sub.cost > 0 ? props.formatCost(sub.cost) : formatTokenCount(sub.input)}
               unit={sub.cost > 0 ? "" : m.t().tok}
+              labelFg={modelRowColor(sub.model, sub.providerID, m.pal())}
+              valueFg={m.pal().muted}
             />
           </Show>
         )}

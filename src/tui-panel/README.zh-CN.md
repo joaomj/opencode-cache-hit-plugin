@@ -69,7 +69,7 @@ export function MySidebar(props: { theme: Record<string, unknown> }) {
 | `TuiPanel` | 外框 + padding |
 | `TuiPanelTitle` | 可折叠标题；可选 `collapsed` 摘要 |
 | `TuiSection` | `▼` 区块标题 + 分隔线填充 |
-| `TuiMetricRow` | 左标签右数值（可选 unit） |
+| `TuiMetricRow` | 左标签右数值（可选 unit）；可选 `labelFg` / `valueFg` 分段上色 |
 | `TuiHitRow` | Hit 条 + % + 趋势 |
 | `computeHitBarWidth` | 动态进度条宽度 |
 

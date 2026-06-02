@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { Show, type JSX } from "solid-js"
-import { padBeforeTitleSummary, sepAfterPrefix, visualWidth } from "./layout.ts"
+import { padBeforeTitleSummary, sepAfterPrefix, UNIT_GAP, visualWidth } from "./layout.ts"
 import type { PanelLayout } from "./use-panel-layout.ts"
 import type { PanelPalette } from "./palette.ts"
 
@@ -126,17 +126,45 @@ export function TuiSection(props: {
   )
 }
 
+function metricRowGap(label: string, value: string, unit: string, gauge: number): number {
+  const used =
+    visualWidth(label) + visualWidth(value) + (unit ? visualWidth(unit) + UNIT_GAP : 0)
+  return Math.max(1, gauge - used)
+}
+
 export function TuiMetricRow(props: {
   pal: PanelPalette
   layout: PanelLayout
   label: string
   value: string
   unit?: string
+  /** Whole line (label + value + unit). Ignored when `labelFg` / `valueFg` set. */
   fg?: string
+  /** Label-only color (e.g. sub-agent model); value stays `valueFg` or muted. */
+  labelFg?: string
+  valueFg?: string
 }) {
+  const unit = props.unit ?? ""
+  const unitSuffix = unit ? " " + unit : ""
+  const split = props.labelFg !== undefined || props.valueFg !== undefined
+  if (split) {
+    const gap = metricRowGap(props.label, props.value, unit, props.layout.gauge())
+    const labelColor = props.labelFg ?? props.fg ?? props.pal.muted
+    const valueColor = props.valueFg ?? props.fg ?? props.pal.muted
+    return (
+      <text>
+        <span style={{ fg: labelColor }}>{props.label}</span>
+        {" ".repeat(gap)}
+        <span style={{ fg: valueColor }}>
+          {props.value}
+          {unitSuffix}
+        </span>
+      </text>
+    )
+  }
   return (
     <text fg={props.fg ?? props.pal.muted}>
-      {props.layout.row(props.label, props.value, props.unit ?? "")}
+      {props.layout.row(props.label, props.value, unit)}
     </text>
   )
 }

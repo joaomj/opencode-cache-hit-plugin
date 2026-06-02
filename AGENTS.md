@@ -31,7 +31,8 @@ After moving or renaming exports: run full `bun test`; `tests/module-load.test.t
 ## Code conventions
 
 - **Minimal diffs**; match existing naming and module boundaries.
-- **Pure logic** in `stats.ts`, `timeline/`, `format-*.ts`, `tui-panel/layout.ts` — avoid pulling JSX into modules used by tests (import `layout.ts` / `palette.ts` directly, not `tui-panel/index.ts` when possible).
+- **Pure logic** in `stats.ts`, `timeline/`, `format-*.ts`, `format-model.ts`, `tui-panel/layout.ts` — avoid pulling JSX into modules used by tests (import `layout.ts` / `palette.ts` directly, not `tui-panel/index.ts` when possible).
+- **Sub-agent row UI**: `format-model.ts` + `agents-view.tsx`; behavior in design doc § Sub-agent row display / 子 session 行展示.
 - **`PLUGIN_ROOT`** in `load-config.ts` is `fileURLToPath(new URL("..", import.meta.url))` — do **not** wrap with an extra `dirname` (breaks config path).
 - **Sub-agent ids**: only from `session.list` overwrite in `child-session-sync.ts`; do not append via `session.get`.
 - **Agents UI totals**: child sessions only; main session excluded by design (see design doc).

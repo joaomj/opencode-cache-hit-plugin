@@ -6,7 +6,7 @@ OpenCode **TUI sidebar plugin** for prompt **cache hit rate**, **token usage**, 
 
 **Languages:** English (this file) · [简体中文](README.zh-CN.md) · [Documentation](docs/README.md)
 
-![Cache Hit sidebar panel](docs/assets/cache-hit-panel.v2.png)
+![Cache Hit sidebar panel](docs/assets/cache-hit-panel.v3.png)
 
 ## Why this plugin
 
@@ -30,7 +30,7 @@ The **cache TTL** feature (elapsed time display with color-coded status) is insp
 - **Cache hit rate**: session total + **per-turn** rate with trend (↑ / ↓ / `-`) on the main block
 - **Token breakdown**: cache read / write / miss / output (aligned rows with visual-cache)
 - **Cost**: session cost with multi-currency config (`USD`, `CNY`, `EUR`, `GBP`, `JPY`); per-million rates and cache savings from provider config
-- **Sub-agents**: **Agents** section rolls up **child sessions only** (scope labeled in UI)
+- **Sub-agents**: **Agents** section rolls up **child sessions only** (scope labeled in UI); each row shows model name + session ID suffix with **vendor-tinted** label (cost in muted gray)
 - **Main + Agents**: main block always shown; **Agents** section when sub-agents exist (foldable)
 - **Collapsible sections**: Detail / Model (and Agents); theme-adaptive hit bar colors
 - **i18n**: `display.lang` — `en` / `zh` / `auto` via config (no slash commands yet)
@@ -120,7 +120,7 @@ Supported display currencies in config: `USD`, `CNY`, `EUR`, `GBP`, `JPY` (see `
 | `panelBorder` | `true` | Border/padding |
 | `mainHitLabel` | (i18n) | Optional override for the Hit row label |
 
-**Agents** totals sum **child sessions only**, not the main session (see `agentsScopeHint`). Main session metrics stay in the block above; collapse **Agents** to save space.
+**Agents** totals sum **child sessions only**, not the main session (see `agentsScopeHint`). Main session metrics stay in the block above; collapse **Agents** to save space. Per-child rows use the same model slug as the main **Model** line (truncated when the sidebar is narrow); see [docs/en/design.md](docs/en/design.md) § Sub-agent row display.
 
 ### Timeline logs (`timeline`, default off)
 
