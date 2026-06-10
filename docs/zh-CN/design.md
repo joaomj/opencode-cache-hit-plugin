@@ -59,7 +59,8 @@ sequenceDiagram
   Host->>API: session.list → childIds
   API-->>Host: message.updated { info: Message }
   Host->>Host: refreshTick++, timeline.handleMessage(info)
-  Host->>API: session.messages(sid / cid)
+  Host->>API: session.get(sid / cid) → 聚合值
+  Host->>API: session.messages(sid / cid) → fallback / 趋势
   Host->>W: main, messages, subAgents
   W->>W: aggregate / format / TuiPanel
 ```
@@ -113,14 +114,14 @@ flowchart TD
   F -->|否| R
   C --> H[childSessionIdsForParent]
   C2 --> H
-  H --> I[messages 重读 + 聚合]
+  H --> I["session.get 聚合 + messages 兜底"]
 ```
 
 - **唯一来源**：`childIds` 始终由 `session.list` 结果**覆盖**写入，不再 `session.get` + 追加（避免漏发现、僵尸 id）。
 - **竞态**：`listGen` 在 parent 切换时递增；回调校验 generation 与 `parentId` 未变。
 - **流式**：外国 session 的 `message.updated` 很密，用 `CHILD_LIST_DEBOUNCE_MS`（200ms）合并 list 请求。
 - **一层子 session**：`parentID === sid` 的直接子节点；嵌套子 agent 见「未来方向」。
-- **子 session 数据**：对每个 `cid` 调用 `messages(cid)` → `aggregateSessionFromMessages`；无统计的条目过滤掉。
+- **子 session 数据**：`session.get(cid)` → `aggregateFromSessionObject`（主路径）；不可用时降级到 `messages(cid)` → `aggregateSessionFromMessages`。若 session 聚合缺少 model/provider 元数据，从 messages 末尾补齐（`withModelFallback`）。
 
 ### Agents 合计语义（实现正确，勿与「全场总账」混淆）
 
@@ -154,12 +155,12 @@ flowchart TD
 
 | 数据 | 触发方式 |
 |------|----------|
-| 主 session snapshot | `createMemo` 内读 `refreshTick` + `api.state.session.messages(sid)` |
-| 主 session 消息列表（Hit 趋势） | 同上 |
-| 子 agent 列表内容 | `childIds` 变化或 `refreshTick` 后各 `messages(cid)` 重读 |
+| 主 session snapshot | `createMemo` 内读 `refreshTick` + `session.get(sid)`（聚合）；fallback `messages(sid)` |
+| 主 session 消息列表（Hit 趋势） | `createMemo` 内读 `refreshTick` + `messages(sid)` |
+| 子 agent 列表内容 | `refreshTick` + `childIds` → 每个 child 的 `session.get(cid)`；fallback `messages(cid)` |
 | 子 agent id 集合 | `session.list` 完成回调 / `message.updated` 发现新 child |
 
-主 session **显式**订阅 `message.updated`（在 `sidebar-host`）：每次事件 `refreshTick++`，保证流式过程中 `tokens` 更新会重算（不仅依赖 store 是否自动触发 Solid memo）。
+主 session **显式**订阅 `message.updated`（在 `sidebar-host`）：每次事件 `refreshTick++`，触发相关 memo 重算；会话总量以 `session.get()` 聚合为准，逐轮趋势使用最近 messages。
 
 ### 累加规则
 

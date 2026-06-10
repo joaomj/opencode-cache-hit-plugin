@@ -53,13 +53,26 @@ export type ProviderInfo = {
   models: { [key: string]: { cost: ModelCost } }
 }
 
+/** Session aggregate from `api.state.session.get()` — DB-level totals, not capped by message limit. */
+export type SessionObject = {
+  model?: { id: string; providerID: string }
+  cost?: number
+  tokens?: {
+    input?: number
+    output?: number
+    reasoning?: number
+    cache?: { read?: number; write?: number }
+  }
+  parentID?: string
+}
+
 export type OpenCodeTuiApi = {
   state: {
     path: { directory: string }
     provider: ReadonlyArray<ProviderInfo>
     session: {
       messages: (id: string) => unknown[] | undefined
-      get: (id: string) => { parentID?: string } | undefined
+      get: (id: string) => SessionObject | undefined
     }
   }
   client: {

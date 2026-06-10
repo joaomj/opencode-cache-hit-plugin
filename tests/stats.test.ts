@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test"
 import {
   emptySessionSnapshot,
+  aggregateFromSessionObject,
   aggregateSessionFromMessages,
   cacheHitRatio,
   subAgentHasStats,
@@ -9,8 +10,44 @@ import {
   perMessageHitPercent,
   toSubAgentSummary,
   aggregateSubAgents,
+  withModelFallback,
 } from "../src/stats.ts"
 import type { SubAgentSummary } from "../src/types.ts"
+
+describe("aggregateFromSessionObject", () => {
+  test("empty session returns zero snapshot", () => {
+    expect(aggregateFromSessionObject({})).toEqual(emptySessionSnapshot())
+  })
+
+  test("reads aggregate fields from session object", () => {
+    const snap = aggregateFromSessionObject({
+      model: { id: "anthropic/claude-sonnet-4-20250514", providerID: "anthropic" },
+      cost: 0.123,
+      tokens: {
+        input: 1000,
+        output: 500,
+        reasoning: 100,
+        cache: { read: 8000, write: 2000 },
+      },
+    })
+    expect(snap.model).toBe("anthropic/claude-sonnet-4-20250514")
+    expect(snap.providerID).toBe("anthropic")
+    expect(snap.cost).toBe(0.123)
+    expect(snap.input).toBe(1000)
+    expect(snap.output).toBe(500)
+    expect(snap.reasoning).toBe(100)
+    expect(snap.cacheRead).toBe(8000)
+    expect(snap.cacheWrite).toBe(2000)
+  })
+
+  test("handles missing tokens and model", () => {
+    const snap = aggregateFromSessionObject({ cost: 0.05 })
+    expect(snap.cost).toBe(0.05)
+    expect(snap.model).toBe("")
+    expect(snap.input).toBe(0)
+    expect(snap.cacheRead).toBe(0)
+  })
+})
 
 describe("aggregateSessionFromMessages", () => {
   test("empty input", () => {
@@ -115,5 +152,48 @@ describe("subAgentHasStats", () => {
     expect(subAgentHasStats({ ...emptySessionSnapshot(), cacheRead: 1 })).toBe(true)
     expect(subAgentHasStats({ ...emptySessionSnapshot(), output: 10 })).toBe(true)
     expect(subAgentHasStats(emptySessionSnapshot())).toBe(false)
+  })
+})
+
+describe("withModelFallback", () => {
+  test("returns unchanged when model and providerID are present", () => {
+    const snap = { ...emptySessionSnapshot(), model: "claude", providerID: "anthropic", cost: 1 }
+    const result = withModelFallback(snap, [])
+    expect(result.model).toBe("claude")
+    expect(result.providerID).toBe("anthropic")
+    expect(result.cost).toBe(1)
+  })
+
+  test("fills model from last assistant message without mutating input", () => {
+    const snap = { ...emptySessionSnapshot(), cost: 5, cacheRead: 100 }
+    const msgs: Parameters<typeof withModelFallback>[1] = [
+      { role: "assistant", modelID: "gpt-5", providerID: "openai" },
+      { role: "assistant", modelID: "claude", providerID: "anthropic" },
+    ]
+    const result = withModelFallback(snap, msgs)
+    expect(result).not.toBe(snap)
+    expect(result.model).toBe("claude")
+    expect(result.providerID).toBe("anthropic")
+    expect(result.cost).toBe(5)
+    expect(result.cacheRead).toBe(100)
+    expect(snap.model).toBe("")
+    expect(snap.providerID).toBe("")
+  })
+
+  test("skips non-assistant messages", () => {
+    const snap = { ...emptySessionSnapshot(), cost: 1 }
+    const msgs: Parameters<typeof withModelFallback>[1] = [
+      { role: "user" },
+      { role: "assistant", modelID: "deepseek" },
+    ]
+    const result = withModelFallback(snap, msgs)
+    expect(result.model).toBe("deepseek")
+  })
+
+  test("does nothing when messages have no model", () => {
+    const snap = { ...emptySessionSnapshot(), cost: 1 }
+    const result = withModelFallback(snap, [])
+    expect(result.model).toBe("")
+    expect(result.providerID).toBe("")
   })
 })

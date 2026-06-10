@@ -16,6 +16,7 @@ OpenCode TUI sidebar plugin: **cache hit rate**, **tokens**, **cost**, with **su
 | Architecture | [docs/en/design.md](docs/en/design.md) | [docs/zh-CN/design.md](docs/zh-CN/design.md) |
 | Timeline / JSONL | [docs/en/timeline.md](docs/en/timeline.md) | [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md) |
 | TUI panel | [src/tui-panel/README.md](src/tui-panel/README.md) | [src/tui-panel/README.zh-CN.md](src/tui-panel/README.zh-CN.md) |
+| Migration plan | [docs/en/frontend-migration-plan.md](docs/en/frontend-migration-plan.md) | [docs/zh-CN/frontend-migration-plan.md](docs/zh-CN/frontend-migration-plan.md) |
 | Contributing / npm | [CONTRIBUTING.md](CONTRIBUTING.md) | — |
 | Index | [docs/README.md](docs/README.md) | |
 

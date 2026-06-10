@@ -1,4 +1,4 @@
-import type { AssistantMessage, SessionSnapshot, SubAgentSummary } from "./types.ts"
+import type { AssistantMessage, SessionObject, SessionSnapshot, SubAgentSummary } from "./types.ts"
 
 export function mainSessionHasStats(main: SessionSnapshot): boolean {
   return (
@@ -12,6 +12,21 @@ export function mainSessionHasStats(main: SessionSnapshot): boolean {
 
 export function emptySessionSnapshot(): SessionSnapshot {
   return { model: "", providerID: "", input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0 }
+}
+
+export function aggregateFromSessionObject(session: SessionObject): SessionSnapshot {
+  const t = session.tokens
+  const c = t?.cache
+  return {
+    model: session.model?.id ?? "",
+    providerID: session.model?.providerID ?? "",
+    input: t?.input ?? 0,
+    output: t?.output ?? 0,
+    reasoning: t?.reasoning ?? 0,
+    cacheRead: c?.read ?? 0,
+    cacheWrite: c?.write ?? 0,
+    cost: session.cost ?? 0,
+  }
 }
 
 export function aggregateSessionFromMessages(messages: readonly AssistantMessage[]): SessionSnapshot {
@@ -79,6 +94,31 @@ export function subAgentHasStats(snap: SessionSnapshot): boolean {
     snap.output > 0 ||
     snap.reasoning > 0
   )
+}
+
+/**
+ * Fill missing model / providerID from the last assistant message.
+ * Session aggregates may have cost/tokens but lack model metadata;
+ * this avoids losing pricing/display when session.get() is used.
+ */
+export function withModelFallback(
+  snap: SessionSnapshot,
+  messages: readonly AssistantMessage[],
+): SessionSnapshot {
+  if (snap.model && snap.providerID) return snap
+
+  let model = snap.model
+  let providerID = snap.providerID
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m.role !== "assistant") continue
+    if (!model && m.modelID) model = m.modelID
+    if (!providerID && m.providerID) providerID = m.providerID
+    if (model && providerID) break
+  }
+  return model === snap.model && providerID === snap.providerID
+    ? snap
+    : { ...snap, model, providerID }
 }
 
 export function sidebarShouldShow(

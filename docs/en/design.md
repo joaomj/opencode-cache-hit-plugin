@@ -59,7 +59,8 @@ sequenceDiagram
   Host->>API: session.list → childIds
   API-->>Host: message.updated { info: Message }
   Host->>Host: refreshTick++, timeline.handleMessage(info)
-  Host->>API: session.messages(sid / cid)
+  Host->>API: session.get(sid / cid) → aggregates
+  Host->>API: session.messages(sid / cid) → fallback / trend
   Host->>W: main, messages, subAgents
   W->>W: aggregate / format / TuiPanel
 ```
@@ -113,14 +114,14 @@ flowchart TD
   F -->|no| R
   C --> H[childSessionIdsForParent]
   C2 --> H
-  H --> I[re-read messages + aggregate]
+  H --> I["session.get aggregate + messages fallback"]
 ```
 
 - **Single source of truth**: `childIds` always **replaced** from `session.list` (no `session.get` append).
 - **Races**: `listGen` increments on parent change; callbacks check generation and `parentId`.
 - **Streaming**: foreign-session `message.updated` is debounced (`CHILD_LIST_DEBOUNCE_MS` = 200ms).
 - **Depth**: direct children only (`parentID === sid`); nested sub-agents are future work.
-- **Data**: `messages(cid)` → `aggregateSessionFromMessages`; entries without stats are filtered out.
+- **Data**: `session.get(cid)` → `aggregateFromSessionObject` (primary); falls back to `messages(cid)` → `aggregateSessionFromMessages`. Model/provider metadata is patched from messages when missing from session aggregates (`withModelFallback`).
 
 ### Agents block semantics
 
@@ -154,12 +155,12 @@ Implementation: `agents-view.tsx` calls `formatSubAgentLabel` + `modelRowColor`;
 
 | Data | Trigger |
 |------|---------|
-| Main snapshot | `createMemo` reads `refreshTick` + `messages(sid)` |
-| Main messages (Hit trend) | Same |
-| Sub-agent content | `childIds` or `refreshTick` → re-read each `messages(cid)` |
+| Main snapshot | `createMemo` reads `refreshTick` + `session.get(sid)` (aggregate); fallback `messages(sid)` |
+| Main messages (Hit trend) | `createMemo` reads `refreshTick` + `messages(sid)` |
+| Sub-agent content | `refreshTick` + `childIds` → `session.get(cid)` per child; fallback `messages(cid)` |
 | Sub-agent ids | `session.list` callback / debounced refresh on foreign activity |
 
-`sidebar-host` subscribes to `message.updated` and bumps `refreshTick` so streaming token updates always recompute.
+`sidebar-host` subscribes to `message.updated` and bumps `refreshTick` so dependent memos recompute; session totals follow `session.get()` aggregates, while per-turn trend follows recent messages.
 
 ### Accumulation rules
 

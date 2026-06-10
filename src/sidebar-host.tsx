@@ -6,16 +6,20 @@ import { createTimelineCollector } from "./timeline/collector.ts"
 import type { AssistantMessage, OpenCodeTuiApi, SubAgentSummary } from "./types.ts"
 import {
   emptySessionSnapshot,
+  aggregateFromSessionObject,
   aggregateSessionFromMessages,
+  mainSessionHasStats,
   subAgentHasStats,
   toSubAgentSummary,
+  withModelFallback,
 } from "./stats.ts"
 import { createChildSessionSync } from "./child-session-sync.ts"
 import { loadPluginConfig } from "./load-config.ts"
 
 /**
- * Session-scoped sidebar host. Bumps `refreshTick` on message.updated (same as visual-cache)
- * so memos re-read api.state.session.messages.
+ * Session-scoped sidebar host. Bumps `refreshTick` on message.updated
+ * so memos re-compute. Prefers session.get() for aggregate cost/tokens
+ * (DB-level, not capped at 100 messages), falls back to session.messages().
  * Timeline writes are event-driven: message.updated → handleMessage → appendFile.
  */
 export function CacheHitSidebarHost(props: {
@@ -63,6 +67,14 @@ export function CacheHitSidebarHost(props: {
     void refreshTick()
     const sid = props.sessionId
     if (!sid) return emptySessionSnapshot()
+    const session = props.api.state.session.get(sid)
+    if (session) {
+      const snap = aggregateFromSessionObject(session)
+      if (mainSessionHasStats(snap)) {
+        const msgs = props.api.state.session.messages(sid) as AssistantMessage[] | undefined
+        return msgs ? withModelFallback(snap, msgs) : snap
+      }
+    }
     const msgs = props.api.state.session.messages(sid)
     return msgs?.length
       ? aggregateSessionFromMessages(msgs as AssistantMessage[])
@@ -76,17 +88,27 @@ export function CacheHitSidebarHost(props: {
     return (props.api.state.session.messages(sid) ?? []) as AssistantMessage[]
   })
 
-  const subAgentList = createMemo(() =>
-    childIds()
+  const subAgentList = createMemo(() => {
+    void refreshTick()
+    return childIds()
       .map((cid) => {
+        const session = props.api.state.session.get(cid)
+        if (session) {
+          const snap = aggregateFromSessionObject(session)
+          if (subAgentHasStats(snap)) {
+            const msgs = props.api.state.session.messages(cid) as AssistantMessage[] | undefined
+            const merged = msgs ? withModelFallback(snap, msgs) : snap
+            return toSubAgentSummary(cid, merged)
+          }
+        }
         const msgs = props.api.state.session.messages(cid)
         if (!msgs?.length) return null
         const snap = aggregateSessionFromMessages(msgs as AssistantMessage[])
         if (!subAgentHasStats(snap)) return null
         return toSubAgentSummary(cid, snap)
       })
-      .filter(Boolean) as SubAgentSummary[],
-  )
+      .filter(Boolean) as SubAgentSummary[]
+  })
 
   createEffect(() => {
     const sid = props.sessionId

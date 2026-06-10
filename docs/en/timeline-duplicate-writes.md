@@ -12,10 +12,10 @@ The OpenCode TUI plugin API has two data access patterns:
 
 | API | Behavior |
 |-----|----------|
-| `api.state.session.messages(sessionId)` | Returns **all** messages — no cursor, `since`, or limit |
+| `api.state.session.messages(sessionId)` | Returns up to 100 messages (capped by TUI sync); no cursor, `since`, or limit parameter on the plugin side |
 | `api.event.on("message.updated", handler)` | Fires per-message, carries the **full `Message` object** (cost, tokens, time, modelID, providerID) — see [`types.gen.ts` L1064](https://github.com/anomalyco/opencode/blob/dev/packages/sdk/js/src/v2/gen/types.gen.ts#L1064) |
 
-The original collector used the **polling path**: subscribe to `message.updated` → call `schedule()` (500ms debounce) → `collectNow()` → `getMessages()` (full history) → `buildCallRecords()` (all messages) → `shouldFlushToDisk()` (dedup filter). This required a `flushedKeys` Set to skip already-written records.
+The original collector used the **polling path**: subscribe to `message.updated` → call `schedule()` (500ms debounce) → `collectNow()` → `getMessages()` (TUI-synced window, up to 100 messages) → `buildCallRecords()` (all returned messages) → `shouldFlushToDisk()` (dedup filter). This required a `flushedKeys` Set to skip already-written records.
 
 On restart, `flushedKeys` was lost (it lived in memory only). Every message in the session would be re-flushed to JSONL. A startup scan of all JSONL files was proposed to rebuild the set, adding complexity without addressing the core issue: **polling is the wrong pattern for a write-only log**.
 
