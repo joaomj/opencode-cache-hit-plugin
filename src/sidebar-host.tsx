@@ -167,10 +167,16 @@ export function CacheHitSidebarHost(props: {
   }
 
   const trackStreaming = () => {
+    const messages = mainMessages()
+    const last = messages[messages.length - 1]
+    if (last?.role === "assistant" && !last.time?.completed) {
+      seedTtftFromParts(last)
+    }
     const result = advanceStreamingNow(streamingTickState, {
-      messages: mainMessages(),
+      messages,
       part: props.api.state.part,
       now: Date.now(),
+      firstPartTime: firstPartTracker.get(),
     })
     streamingTickState = result
     setStreamingNow({ phase: result.phase, speed: result.speed })

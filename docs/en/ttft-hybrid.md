@@ -1,6 +1,6 @@
 # TTFT Hybrid Implementation
 
-This document describes how opencode-cache-hit measures **Time To First Token (TTFT)** in the sidebar **Speed** section (and in optional timeline JSONL when `timeline.enabled` is true).
+This document describes how opencode-cache-hit measures **Time To First Token (TTFT)** and **generation-speed denominators** in the sidebar **Speed** section (and in optional timeline JSONL when `timeline.enabled` is true).
 
 ## Background
 
@@ -40,7 +40,7 @@ type TextPart = {
 
 | | |
 |--|--|
-| **Trigger** | `message.updated` for an assistant message when no timestamp is stored yet |
+| **Trigger** | `message.updated` for an assistant message when no timestamp is stored yet; also each 1s streaming poll on the in-flight message while **Now** is active |
 | **Fields** | Earliest `part.time.start` among `text` / `reasoning` parts from `api.state.part()` |
 | **Formula** | Same as source 1 |
 | **Accuracy** | Same as server-side when persisted parts include `time.start` |
@@ -73,10 +73,13 @@ sequenceDiagram
     SDK->>Host: message.part.delta
     Host->>Tracker: store client Date.now()
 
+    Note over SDK: Streaming poll (1s)
+    Host->>Tracker: scan api.state.part on in-flight if still empty
+
     Note over SDK: Turn completes
     SDK->>Host: message.updated
     Host->>Tracker: scan api.state.part if still empty
-    Host->>UI: show last completed TTFT
+    Host->>UI: TTFT row + Last/Avg/Now speed denominators
     Host->>Timeline: append record if timeline.enabled
 ```
 
@@ -86,12 +89,13 @@ sequenceDiagram
 |--------|------|
 | `src/first-part-time.ts` | Per-message first-part timestamps |
 | `src/sidebar-host.tsx` | Subscribes to part / message events |
-| `src/use-cache-hit-metrics.ts` | `lastTtft` / `lastTtftLabel` for the sidebar |
+| `src/use-cache-hit-metrics.ts` | `lastTtft`, **Last** / **Avg** / sparkline speed (gen time when tracked) |
+| `src/token-speed.ts` | Streaming **Now** speed denominator |
 | `src/timeline/collector.ts` | Writes `ttftMs` / `ttftSource` when timeline is enabled |
 
 ## Sidebar display
 
-Shows the latest **completed** non-summary assistant turn (`944ms`, `1.2s`, or `"—"`). Display rules and troubleshooting: [ttft-troubleshooting.md](./ttft-troubleshooting.md).
+Shows the latest **completed** non-summary assistant turn (`944ms`, `1.2s`, or `"—"`). The same tracker drives **Now** / **Last** / **Avg** generation-speed denominators when timestamps exist. Display rules and troubleshooting: [ttft-troubleshooting.md](./ttft-troubleshooting.md).
 
 ## Timeline JSONL
 

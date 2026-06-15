@@ -14,7 +14,7 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 
 ### 已完成调用的速度
 
-展示**已完成**的 LLM 调用的 token 速度，使用真实 token 数和实际耗时。
+展示**已完成** LLM 调用的 token 速度，使用真实 token 数。当 `firstPartTime` 已跟踪（与 TTFT 共用的 hybrid tracker）时，**最近**、**平均**与 sparkline 使用生成阶段耗时（首 token → 完成），不含 TTFT；否则回退为整轮时长（`completed - created`）。
 
 ### 实时流式速度
 
@@ -25,7 +25,7 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 | 状态 | 显示 | 颜色 |
 |------|------|------|
 | 空闲（无流式） | `·` | muted |
-| 预热（已开始但 &lt;500ms 或尚无文本） | `<1 tok/s` | success |
+| 预热（TTFT 等待、距起点 &lt;500ms 或尚无文本） | `<1 tok/s` | success |
 | 流式中 | `N tok/s` | success |
 | 保持（流式结束后 2 秒） | 上次 `N tok/s` | muted |
 
@@ -37,7 +37,7 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 
 ### 子 Agent 速度
 
-扩展"子 Agent"区域，为每个子会话添加速度行。
+扩展"子 Agent"区域，为每个子会话添加速度行。仅使用整轮时长（子 session 未接入主 session 的 TTFT tracker）。
 
 ### 相关模块
 
@@ -125,26 +125,27 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 
 ## 6. **实时**速度算法
 
-### 当前：累积平均（已采用）
+### 当前：自首 token 起的累积平均（已采用）
 
 `src/token-speed.ts` 中的 `estimateStreamingSpeed()`：
 
 ```
-速度 ≈ (text.length / 4) / ((now - msg.time.created) / 1000)
+start = firstPartTime（> created 时）?? msg.time.created
+速度 ≈ (text.length / 4) / ((now - start) / 1000)
 ```
 
-通过 `api.state.part()` 每秒轮询。这是**自本轮请求开始以来的平均速度**，不是瞬时速率。
+通过 `api.state.part()` 每秒轮询。当 `firstPartTime` 已记录（与 timeline / **TTFT** 行共用的 hybrid tracker）时，分母从首 token 起算 — **实时**反映生成速度，不含 TTFT 等待。首条 stream part 记录前仍回退到 `msg.time.created`。这是**自首次输出以来的平均速度**，不是瞬时速率。
 
 **作为默认的理由**
 
 - 实现简单 — 无需 per-message 采样缓冲
 - TUI 侧边栏数值稳定、少跳动
 - 与**最近** / **平均**（完成后的真 token）互补
-- 与 MiMo-Code 参考实现同为 char/4 启发式
+- 与 MiMo-Code 参考实现同为 char/4 启发式；排除 TTFT，与 opencode-hud / throughput 等插件一致
 
 **代价**
 
-- 分母含 TTFT 等待 → 流式前半段偏低，逐渐逼近整轮平均
+- 首 token 尚未记录时，分母仍用 `created`（warmup / TTFT 阶段）
 - 流中停顿（工具调用、长思考）时平均缓慢下降，而非骤降到近 0
 - 中英文、代码、reasoning 混排时 char/4 有系统误差（凡基于文本的估算共有）
 
@@ -160,13 +161,11 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 
 | | 累积平均（当前） | 滑窗式 |
 |--|-----------------|--------|
-| 含义 | 自本轮开始的平均 | 接近瞬时的速率 |
+| 含义 | 自首 token 起的平均（已跟踪时排除 TTFT） | 接近瞬时的速率 |
 | 稳定性 | 高 | 较低；可能需要 EMA 平滑 |
 | 卡顿 | 缓慢回落 | 无新字时快速走低 |
 | 突发加速 | 被历史稀释 | 短窗内更明显 |
 | 状态 | 极少 | 需记录上次采样或缓冲 |
 | 工具/思考间隙 | 平均持续被拉低 | 窗内无增量时接近 0，需单独语义 |
-
-**较轻的 intermediate 方案（不必先上完整滑窗）：** 分母改用 `firstPartTime`（见 [ttft-hybrid.md](./ttft-hybrid.md)）而非 `msg.time.created`，使**实时**只统计生成阶段、不含 TTFT，可复用现有 tracker。
 
 **何时再考虑滑窗：** 需要明显感知卡顿/突发，或希望流式中 **实时** 更接近完成后的 **最近**。对当前「粗看吞吐」的侧边栏目标非必需。

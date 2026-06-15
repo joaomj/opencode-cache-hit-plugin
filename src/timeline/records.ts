@@ -1,4 +1,4 @@
-import { timingFromAssistantMessage } from "../message-timing.ts"
+import { generationDurationMs, timingFromAssistantMessage } from "../message-timing.ts"
 import { perMessageHitPercent } from "../stats.ts"
 import type { AssistantMessage } from "../types.ts"
 import type { LlmCallRecord } from "./types.ts"
@@ -43,11 +43,7 @@ export function assistantMessageToRecord(
   const ttftMs = firstPartTime !== undefined && firstPartTime > timing.created
     ? firstPartTime - timing.created
     : undefined
-  // Generation time: from first token to completion (excludes TTFT)
-  // Falls back to total duration when firstPartTime unavailable (includes TTFT)
-  const genTimeMs = firstPartTime !== undefined && timing.completedAt !== undefined
-    ? timing.completedAt - firstPartTime
-    : timing.durationMs
+  const genTimeMs = generationDurationMs(timing, firstPartTime)
   const tps = genTimeMs !== undefined && genTimeMs > 0 && output > 0
     ? (output / genTimeMs) * 1000
     : undefined

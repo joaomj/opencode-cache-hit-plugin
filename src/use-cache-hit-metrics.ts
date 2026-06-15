@@ -19,7 +19,7 @@ import {
 } from "./stats.ts"
 import { computePricing, type PricingInfo } from "./pricing.ts"
 import { computeAvgTokenSpeed, computeTokenSpeed, formatTokenSpeed } from "./token-speed.ts"
-import { timingFromAssistantMessage } from "./message-timing.ts"
+import { generationDurationMs, timingFromAssistantMessage } from "./message-timing.ts"
 import { formatSparkline, collectSpeedValues } from "./sparkline.ts"
 
 function activeLang(display: DisplayConfig) {
@@ -82,28 +82,38 @@ export function useCacheHitMetrics(props: {
 
   const lastSpeed = createMemo(() => {
     const msgs = props.messages()
+    const firstPartTime = props.firstPartTime()
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].summary) continue
       const timing = timingFromAssistantMessage(msgs[i])
-      if (!timing?.isComplete || timing.durationMs === undefined) continue
+      if (!timing?.isComplete) continue
       const output = msgs[i].tokens?.output ?? 0
       const reasoning = msgs[i].tokens?.reasoning ?? 0
       if (output + reasoning === 0) continue
-      return computeTokenSpeed(output, reasoning, timing.durationMs)
+      const msgID = msgs[i].id ?? msgs[i].messageID
+      const firstTime = msgID ? firstPartTime.get(msgID) : undefined
+      const durationMs = generationDurationMs(timing, firstTime)
+      if (durationMs === undefined) continue
+      return computeTokenSpeed(output, reasoning, durationMs)
     }
     return 0
   })
 
-  const avgSpeed = createMemo(() => computeAvgTokenSpeed(props.messages()))
+  const avgSpeed = createMemo(() =>
+    computeAvgTokenSpeed(props.messages(), props.firstPartTime()),
+  )
 
   const speedValues = createMemo(() => {
     const msgs = props.messages()
+    const firstPartTime = props.firstPartTime()
     const records = msgs
       .filter((msg) => msg.role === "assistant" && !msg.summary && msg.time?.completed)
       .map((msg) => {
         const timing = timingFromAssistantMessage(msg)
+        const msgID = msg.id ?? msg.messageID
+        const firstTime = msgID ? firstPartTime.get(msgID) : undefined
         return {
-          durationMs: timing?.durationMs,
+          durationMs: timing ? generationDurationMs(timing, firstTime) : undefined,
           output: (msg.tokens?.output ?? 0) + (msg.tokens?.reasoning ?? 0),
         }
       })

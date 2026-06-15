@@ -96,6 +96,21 @@ describe("computeAvgTokenSpeed", () => {
     ]
     expect(computeAvgTokenSpeed(msgs)).toBe(150)
   })
+
+  test("excludes TTFT when firstPartTime map is provided", () => {
+    const msgs = [
+      {
+        id: "m1",
+        tokens: { output: 100, reasoning: 0 },
+        time: { created: 0, completed: 4000 },
+      },
+    ]
+    const withTtft = computeAvgTokenSpeed(msgs)
+    const withoutTtft = computeAvgTokenSpeed(msgs, new Map([["m1", 3000]]))
+    expect(withoutTtft).toBeGreaterThan(withTtft)
+    expect(withoutTtft).toBe(100)
+    expect(withTtft).toBe(25)
+  })
 })
 
 describe("formatTokenSpeed", () => {
@@ -129,6 +144,19 @@ describe("estimateStreamingSpeed", () => {
   test("uses Math.max(1, ...) for estimation", () => {
     const result = estimateStreamingSpeed("ab", 0, 1000)
     expect(result).toBe(1)
+  })
+
+  test("excludes TTFT when firstPartTime is after created", () => {
+    const withTtft = estimateStreamingSpeed("abcdefgh", 0, 4000)
+    const withoutTtft = estimateStreamingSpeed("abcdefgh", 0, 4000, 3000)
+    expect(withoutTtft).toBeGreaterThan(withTtft)
+    expect(withoutTtft).toBe(2)
+    expect(withTtft).toBe(0.5)
+  })
+
+  test("ignores firstPartTime at or before created", () => {
+    expect(estimateStreamingSpeed("abcdefgh", 1000, 2000, 1000)).toBe(2)
+    expect(estimateStreamingSpeed("abcdefgh", 1000, 2000, 500)).toBe(2)
   })
 })
 
@@ -166,6 +194,19 @@ describe("advanceStreamingNow", () => {
     expect(r.phase).toBe("active")
     expect(r.speed).toBe(2)
     expect(r.lastActiveSpeed).toBe(2)
+  })
+
+  test("uses firstPartTime map to exclude TTFT", () => {
+    const ttftMs = 3000
+    const firstPartTime = new Map([["m1", ttftMs]])
+    const r = advanceStreamingNow(initialStreamingTickState(), {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0 } }],
+      part,
+      now: 4000,
+      firstPartTime,
+    })
+    expect(r.phase).toBe("active")
+    expect(r.speed).toBe(2)
   })
 
   test("holds last speed briefly after stream ends", () => {

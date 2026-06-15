@@ -1,6 +1,6 @@
 # TTFT 混合实现方案
 
-本文档说明 opencode-cache-hit 如何在侧边栏 **速度** 区域（以及可选的 timeline JSONL，`timeline.enabled: true` 时）测量 **首 Token 延迟（TTFT）**。
+本文档说明 opencode-cache-hit 如何在侧边栏 **速度** 区域（以及可选的 timeline JSONL，`timeline.enabled: true` 时）测量 **首 Token 延迟（TTFT）** 以及 **生成速度的分母**。
 
 ## 背景
 
@@ -40,7 +40,7 @@ type TextPart = {
 
 | | |
 |--|--|
-| **触发** | assistant 消息的 `message.updated`，且尚无已存时间戳 |
+| **触发** | assistant 消息的 `message.updated` 且尚无已存时间戳；以及 **实时** 流式期间每秒对进行中消息的轮询 |
 | **字段** | `api.state.part()` 中 `text` / `reasoning` 最早的 `part.time.start` |
 | **公式** | 与来源 1 相同 |
 | **精度** | part 已持久化且带 `time.start` 时与服务端等价 |
@@ -73,10 +73,13 @@ sequenceDiagram
     SDK->>Host: message.part.delta
     Host->>Tracker: 记录客户端 Date.now()
 
+    Note over SDK: 流式轮询（1s）
+    Host->>Tracker: 进行中消息仍空则扫描 api.state.part
+
     Note over SDK: 轮次完成
     SDK->>Host: message.updated
     Host->>Tracker: 仍空则扫描 api.state.part
-    Host->>UI: 展示最近完成轮次 TTFT
+    Host->>UI: 首Token 行 + 最近/平均/实时 速度分母
     Host->>Timeline: timeline.enabled 时落盘
 ```
 
@@ -86,12 +89,13 @@ sequenceDiagram
 |------|------|
 | `src/first-part-time.ts` | 按消息记录首 part 时间 |
 | `src/sidebar-host.tsx` | 订阅 part / message 事件 |
-| `src/use-cache-hit-metrics.ts` | 侧边栏 `lastTtft` / `lastTtftLabel` |
+| `src/use-cache-hit-metrics.ts` | `lastTtft`、**最近** / **平均** / sparkline 速度（已跟踪时用生成阶段耗时） |
+| `src/token-speed.ts` | 流式 **实时** 速度分母 |
 | `src/timeline/collector.ts` | timeline 开启时写入 `ttftMs` / `ttftSource` |
 
 ## 侧边栏展示
 
-展示最近一条**已完成**、非 summary 的 assistant 轮次（`944ms`、`1.2s` 或 `"—"`）。展示规则与排查见 [ttft-troubleshooting.md](./ttft-troubleshooting.md)。
+展示最近一条**已完成**、非 summary 的 assistant 轮次（`944ms`、`1.2s` 或 `"—"`）。同一 tracker 在有有效时间戳时也驱动 **实时** / **最近** / **平均** 的生成速度分母。展示规则与排查见 [ttft-troubleshooting.md](./ttft-troubleshooting.md)。
 
 ## Timeline JSONL
 

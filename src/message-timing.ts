@@ -26,6 +26,18 @@ export function timingFromAssistantMessage(msg: AssistantMessage): MessageTiming
   }
 }
 
+/** Generation duration for speed metrics: first token → completion when tracked, else full turn. */
+export function generationDurationMs(
+  timing: MessageTiming,
+  firstPartTime?: number,
+): number | undefined {
+  if (!timing.isComplete || timing.completedAt === undefined) return undefined
+  if (firstPartTime !== undefined && firstPartTime > timing.created) {
+    return timing.completedAt - firstPartTime
+  }
+  return timing.durationMs
+}
+
 export function formatTimingShort(ms: number): string {
   const d = new Date(ms)
   const h = String(d.getHours()).padStart(2, "0")

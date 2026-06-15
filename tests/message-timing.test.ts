@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { timingFromAssistantMessage, formatTimingShort } from "../src/message-timing.ts"
+import { timingFromAssistantMessage, formatTimingShort, generationDurationMs } from "../src/message-timing.ts"
 
 describe("timingFromAssistantMessage", () => {
   test("reads created and completed from SDK shape", () => {
@@ -24,6 +24,33 @@ describe("timingFromAssistantMessage", () => {
 
   test("missing time returns null", () => {
     expect(timingFromAssistantMessage({ role: "assistant" })).toBeNull()
+  })
+})
+
+describe("generationDurationMs", () => {
+  test("uses first token to completion when firstPartTime is after created", () => {
+    const timing = timingFromAssistantMessage({
+      role: "assistant",
+      time: { created: 1000, completed: 3000 },
+    })!
+    expect(generationDurationMs(timing, 1500)).toBe(1500)
+  })
+
+  test("falls back to full turn when firstPartTime unavailable", () => {
+    const timing = timingFromAssistantMessage({
+      role: "assistant",
+      time: { created: 1000, completed: 3000 },
+    })!
+    expect(generationDurationMs(timing)).toBe(2000)
+  })
+
+  test("falls back to full turn when firstPartTime is at or before created", () => {
+    const timing = timingFromAssistantMessage({
+      role: "assistant",
+      time: { created: 1000, completed: 3000 },
+    })!
+    expect(generationDurationMs(timing, 1000)).toBe(2000)
+    expect(generationDurationMs(timing, 500)).toBe(2000)
   })
 })
 

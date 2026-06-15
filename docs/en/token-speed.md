@@ -14,7 +14,7 @@ MiMo-Code's TUI sidebar displays speed using two modes:
 
 ### Completed-call speed
 
-Display token speed for **finished** LLM calls using real token counts and actual duration.
+Display token speed for **finished** LLM calls using real token counts. When `firstPartTime` is tracked (same hybrid TTFT tracker), **Last**, **Avg**, and the sparkline use generation time (first token → completion), excluding TTFT; otherwise they fall back to full turn duration (`completed - created`).
 
 ### Real-time streaming speed
 
@@ -25,7 +25,7 @@ Live speed estimation during streaming using char/4 heuristic. Requires `api.sta
 | State | Display | Color |
 |-------|---------|-------|
 | Idle (no stream) | `·` | muted |
-| Warmup (stream started, &lt;500ms or no text yet) | `<1 tok/s` | success |
+| Warmup (TTFT wait, &lt;500ms since start, or no text yet) | `<1 tok/s` | success |
 | Active | `N tok/s` | success |
 | Hold (2s after stream ends) | last `N tok/s` | muted |
 
@@ -37,7 +37,7 @@ Mini inline chart showing speed trend across last N calls. Rendered as block-cha
 
 ### Per-sub-agent speed
 
-Extend "Agents" section with per-child speed rows.
+Extend "Agents" section with per-child speed rows. Uses full turn duration only (child sessions do not run the main-session TTFT tracker).
 
 ### Related modules
 
@@ -125,26 +125,27 @@ Placement: between **Detail** and **Model** sections.
 
 ## 6. Streaming **Now** algorithm
 
-### Current: cumulative average (shipped)
+### Current: cumulative average since first token (shipped)
 
 `estimateStreamingSpeed()` in `src/token-speed.ts`:
 
 ```
-speed ≈ (text.length / 4) / ((now - msg.time.created) / 1000)
+start = firstPartTime (> created) ?? msg.time.created
+speed ≈ (text.length / 4) / ((now - start) / 1000)
 ```
 
-Polled every 1s via `api.state.part()`. This is a **turn-average since request start**, not an instantaneous rate.
+Polled every 1s via `api.state.part()`. When `firstPartTime` is tracked (same hybrid TTFT tracker as timeline / **TTFT** row), the denominator starts at first token — **Now** reflects generation speed, excluding TTFT wait. Falls back to `msg.time.created` until the first stream part is recorded. This is a **turn-average since first output**, not an instantaneous rate.
 
 **Why this default**
 
 - Simple — no per-message sample buffer
 - Stable numbers in a TUI sidebar (little flicker)
 - Complements **Last** / **Avg** (real token counts after completion)
-- Same char/4 pattern as MiMo-Code reference
+- Same char/4 pattern as MiMo-Code reference; TTFT excluded like opencode-hud / throughput plugins
 
 **Trade-offs**
 
-- Denominator includes TTFT wait → speed starts low and rises toward the turn average
+- Until first token is tracked, denominator still uses `created` (warmup / TTFT phase)
 - Pauses mid-stream (tool calls, thinking gaps) pull the average down slowly rather than dropping sharply
 - char/4 error on mixed CN/EN, code, reasoning (shared with any text-based estimate)
 
@@ -160,13 +161,11 @@ Samples from periodic polls or `message.part.delta` events (ring buffer of `(tim
 
 | | Cumulative (current) | Sliding window |
 |--|---------------------|----------------|
-| Meaning | Average since turn start | Near-instantaneous rate |
+| Meaning | Average since first token (TTFT excluded when tracked) | Near-instantaneous rate |
 | Stability | High | Lower; may need EMA smoothing |
 | Stalls | Slow decay | Fast drop when output stops |
 | Bursts | Diluted by history | Visible in short windows |
 | State | Minimal | Per-message last sample or buffer |
 | Tool / think gaps | Average keeps falling | Window may show ~0 unless handled |
-
-**Possible stepping stone (lighter than full sliding window):** use `firstPartTime` (see [ttft-hybrid.md](./ttft-hybrid.md)) as the start of the denominator instead of `msg.time.created`, so **Now** reflects generation speed only, excluding TTFT. Reuses existing tracker data.
 
 **When to reconsider sliding window:** if users need stall/burst visibility or **Now** should track **Last** more closely during streaming. Not required for the current observability sidebar scope.

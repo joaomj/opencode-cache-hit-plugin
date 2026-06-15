@@ -124,5 +124,6 @@ describe("assistantMessageToRecord", () => {
     const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 500)
     expect(rec).not.toBeNull()
     expect(rec!.ttftMs).toBeUndefined()
+    expect(rec!.tps).toBe(10)
   })
 })
