@@ -31,6 +31,7 @@ export type UiStrings = {
   now: string
   tokPerSec: string
   trend: string
+  ttft: string
 }
 
 const EN: UiStrings = {
@@ -63,6 +64,7 @@ const EN: UiStrings = {
   now: "Now:",
   tokPerSec: "tok/s",
   trend: "Trend:",
+  ttft: "TTFT:",
 }
 
 const ZH: UiStrings = {
@@ -95,6 +97,7 @@ const ZH: UiStrings = {
   now: "实时:",
   tokPerSec: "tok/s",
   trend: "趋势:",
+  ttft: "首Token:",
 }
 
 export function resolveLang(raw: unknown): Lang {

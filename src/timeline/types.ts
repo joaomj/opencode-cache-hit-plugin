@@ -19,4 +19,7 @@ export type LlmCallRecord = {
   cost: number
   hitPercent: number | null
   skippedForHit: boolean
+  ttftMs?: number
+  tps?: number
+  finish?: string
 }

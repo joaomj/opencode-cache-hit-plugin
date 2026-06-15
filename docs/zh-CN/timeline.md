@@ -47,6 +47,7 @@ export type LlmCallRecord = {
   /** OpenCode message id；SDK 若无则用稳定合成键，见下文 */
   messageKey: string
   modelId: string
+  providerId?: string      // Provider ID（如 "anthropic", "openai"）
   created: string
   completedAt?: string
   durationMs?: number
@@ -61,8 +62,15 @@ export type LlmCallRecord = {
   hitPercent: number | null
   /** compaction / summary 消息 */
   skippedForHit: boolean
+  ttftMs?: number          // 首 Token 延迟（firstPartTime - created）
+  tps?: number             // 每秒 Token 数（output / genTime * 1000）
+  finish?: string          // 完成原因（如 "stop", "tool-calls", "error"）
 }
 ```
+
+**`ttftMs` null 处理**
+
+`ttftMs` 经常为 `null`，因为 OpenCode 的 `TextPart.time` 是可选字段。当 SDK 未提供 `part.time.start` 时，无法计算 TTFT。这是预期行为——并非所有 provider/模型都会设置此字段。
 
 **`messageKey`（去重键）**
 

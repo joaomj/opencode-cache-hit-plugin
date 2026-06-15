@@ -116,6 +116,7 @@ export function CacheHitSidebarHost(props: {
 
   const [streamingSpeed, setStreamingSpeed] = createSignal(0)
   const streamingSpeedLabel = createMemo(() => formatTokenSpeed(streamingSpeed()))
+  const firstPartTime = new Map<string, number>()
 
   const trackStreaming = () => {
     const msgs = mainMessages()
@@ -177,6 +178,19 @@ export function CacheHitSidebarHost(props: {
     onCleanup(() => unsub?.())
   })
 
+  createEffect(() => {
+    const unsub = props.api.event.on("message.part.updated", (event) => {
+      const part = (event.properties as any)?.part
+      if (part?.type === "text" && part?.time?.start) {
+        if (!firstPartTime.has(part.messageID)) {
+          firstPartTime.set(part.messageID, part.time.start)
+        }
+        timeline.handlePart(part.messageID, part.type, part.time.start)
+      }
+    })
+    onCleanup(() => unsub?.())
+  })
+
   return (
     <CacheHitSidebar
       sessionId={() => props.sessionId}
@@ -191,6 +205,7 @@ export function CacheHitSidebarHost(props: {
       formatRate={props.formatRate}
       streamingSpeed={streamingSpeed}
       streamingSpeedLabel={streamingSpeedLabel}
+      firstPartTime={firstPartTime}
     />
   )
 }

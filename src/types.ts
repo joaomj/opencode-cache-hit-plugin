@@ -31,6 +31,7 @@ export type AssistantMessage = {
   cost?: number
   /** OpenCode SDK: true = summary/compaction message, not a full LLM pricing turn */
   summary?: boolean
+  finish?: string
   time?: {
     created: number
     completed?: number

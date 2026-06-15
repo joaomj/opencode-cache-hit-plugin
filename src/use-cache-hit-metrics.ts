@@ -40,6 +40,7 @@ export function useCacheHitMetrics(props: {
   subAgents: Accessor<SubAgentSummary[]>
   providers: Accessor<ReadonlyArray<ProviderInfo>>
   layout: PanelLayout
+  firstPartTime: Map<string, number>
 }) {
   const pal = createMemo(() => buildPanelPalette(props.theme()))
   const t = createMemo(() => getUiStrings(activeLang(props.display)))
@@ -111,6 +112,28 @@ export function useCacheHitMetrics(props: {
 
   const sparkline = createMemo(() => formatSparkline(speedValues()))
 
+  const lastTtft = createMemo(() => {
+    const msgs = props.messages()
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].summary) continue
+      const msgID = msgs[i].id ?? msgs[i].messageID
+      if (!msgID) continue
+      const firstTime = props.firstPartTime.get(msgID)
+      if (firstTime === undefined) continue
+      const timing = timingFromAssistantMessage(msgs[i])
+      if (!timing?.isComplete) continue
+      return firstTime - timing.created
+    }
+    return undefined
+  })
+
+  const lastTtftLabel = createMemo(() => {
+    const ttft = lastTtft()
+    if (ttft === undefined) return "—"
+    if (ttft < 1000) return `${ttft}ms`
+    return `${(ttft / 1000).toFixed(1)}s`
+  })
+
   return {
     pal,
     t,
@@ -136,6 +159,8 @@ export function useCacheHitMetrics(props: {
     avgSpeed,
     avgSpeedLabel: createMemo(() => formatTokenSpeed(avgSpeed())),
     sparkline,
+    lastTtft,
+    lastTtftLabel,
   }
 }
 

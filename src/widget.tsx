@@ -32,6 +32,7 @@ export function CacheHitSidebar(props: {
   formatRate: (perMillion: number) => string
   streamingSpeed: Accessor<number>
   streamingSpeedLabel: Accessor<string>
+  firstPartTime: Map<string, number>
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
   const detail = createSectionFold(true)
@@ -50,6 +51,7 @@ export function CacheHitSidebar(props: {
     subAgents: props.subAgents,
     providers: props.providers,
     layout,
+    firstPartTime: props.firstPartTime,
   })
 
   const agentsSuffix = createMemo(() => {

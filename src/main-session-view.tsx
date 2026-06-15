@@ -107,6 +107,13 @@ export function MainSessionView(props: {
               value={m.sparkline()}
             />
           </Show>
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label={m.t().ttft}
+            value={m.lastTtftLabel()}
+            fg={m.lastTtft() !== undefined ? m.pal().text : m.pal().muted}
+          />
         </TuiSection>
       </Show>
 

@@ -42,6 +42,7 @@ export type LlmCallRecord = {
   scope: "main" | "child"
   messageKey: string
   modelId: string
+  providerId?: string      // Provider ID (e.g., "anthropic", "openai")
   created: string
   completedAt?: string
   durationMs?: number
@@ -54,8 +55,15 @@ export type LlmCallRecord = {
   cost: number
   hitPercent: number | null
   skippedForHit: boolean   // compaction / summary
+  ttftMs?: number          // Time To First Token (firstPartTime - created)
+  tps?: number             // Tokens Per Second (output / genTime * 1000)
+  finish?: string          // Finish reason (e.g., "stop", "tool-calls", "error")
 }
 ```
+
+**`ttftMs` null handling**
+
+`ttftMs` is often `null` because OpenCode's `TextPart.time` is optional. When `part.time.start` is not provided by the SDK, TTFT cannot be calculated. This is expected behavior — not all providers/models set this field.
 
 **`messageKey` (dedupe)**
 

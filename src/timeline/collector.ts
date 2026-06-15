@@ -13,6 +13,7 @@ import type { LlmCallRecord } from "./types.ts"
 export type TimelineCollector = {
   /** Process a single message from a message.updated event. */
   handleMessage: (sessionID: string, msg: AssistantMessage) => void
+  handlePart: (messageID: string, partType: string, startTime: number) => void
   resetForRootChange: () => void
   dispose: () => void
   memoryRecords: () => readonly LlmCallRecord[]
@@ -53,6 +54,7 @@ export function createTimelineCollector(opts: {
   let activeDateKey = localDateKey()
   let memory: LlmCallRecord[] = []
   let disposed = false
+  const firstPartTime = new Map<string, number>()
 
   const ensureDateKey = () => {
     const today = localDateKey()
@@ -60,6 +62,13 @@ export function createTimelineCollector(opts: {
       activeDateKey = today
     }
     return today
+  }
+
+  const handlePart = (messageID: string, partType: string, startTime: number) => {
+    if (disposed) return
+    if (partType === "text" && !firstPartTime.has(messageID)) {
+      firstPartTime.set(messageID, startTime)
+    }
   }
 
   const handleMessage = (sessionID: string, msg: AssistantMessage) => {
@@ -79,7 +88,8 @@ export function createTimelineCollector(opts: {
     if (msg.role !== "assistant") return
     if (!opts.config.logSummaryMessages && msg.summary === true) return
 
-    const rec = assistantMessageToRecord(msg, sessionID, rootId, scope, Date.now())
+    const msgID = msg.id ?? msg.messageID ?? ""
+    const rec = assistantMessageToRecord(msg, sessionID, rootId, scope, Date.now(), firstPartTime.get(msgID))
     if (!rec) return
     if (!opts.config.flushIncomplete && !rec.isComplete) return
 
@@ -89,16 +99,23 @@ export function createTimelineCollector(opts: {
     memory.push(rec)
     const max = opts.config.maxMemoryRows
     while (memory.length > max) memory.shift()
+
+    if (rec.isComplete) {
+      firstPartTime.delete(msgID)
+    }
   }
 
   return {
     handleMessage,
+    handlePart,
     resetForRootChange: () => {
       memory = []
+      firstPartTime.clear()
     },
     dispose: () => {
       disposed = true
       memory = []
+      firstPartTime.clear()
     },
     memoryRecords: () => {
       const max = opts.config.maxMemoryRows

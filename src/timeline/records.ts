@@ -31,12 +31,21 @@ export function assistantMessageToRecord(
   rootSessionId: string,
   scope: "main" | "child",
   recordedAt: number,
+  firstPartTime?: number,
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
   if (!timing) return null
   const t = msg.tokens ?? {}
   const skippedForHit = msg.summary === true
+  const output = t.output ?? 0
+  const ttftMs = firstPartTime !== undefined ? firstPartTime - timing.created : undefined
+  const genTimeMs = firstPartTime !== undefined && timing.completedAt !== undefined
+    ? timing.completedAt - firstPartTime
+    : timing.durationMs
+  const tps = genTimeMs !== undefined && genTimeMs > 0 && output > 0
+    ? (output / genTimeMs) * 1000
+    : undefined
   return {
     schema: 1,
     recordedAt: msToISOString(recordedAt),
@@ -50,13 +59,16 @@ export function assistantMessageToRecord(
     durationMs: timing.durationMs,
     isComplete: timing.isComplete,
     input: t.input ?? 0,
-    output: t.output ?? 0,
+    output,
     reasoning: t.reasoning ?? 0,
     cacheRead: t.cache?.read ?? 0,
     cacheWrite: t.cache?.write ?? 0,
     cost: msg.cost ?? 0,
     hitPercent: perMessageHitPercent(msg),
     skippedForHit,
+    ttftMs,
+    tps,
+    finish: msg.finish,
   }
 }
 
