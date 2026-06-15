@@ -4,6 +4,10 @@ import {
   computeAvgTokenSpeed,
   formatTokenSpeed,
   estimateStreamingSpeed,
+  advanceStreamingNow,
+  formatStreamingNowDisplay,
+  initialStreamingTickState,
+  STREAMING_HOLD_MS,
 } from "../src/token-speed.ts"
 
 describe("computeTokenSpeed", () => {
@@ -125,5 +129,88 @@ describe("estimateStreamingSpeed", () => {
   test("uses Math.max(1, ...) for estimation", () => {
     const result = estimateStreamingSpeed("ab", 0, 1000)
     expect(result).toBe(1)
+  })
+})
+
+describe("advanceStreamingNow", () => {
+  const part = (id: string) => {
+    if (id !== "m1") return undefined
+    return [{ type: "text", text: "abcdefgh" }]
+  }
+
+  test("idle when no in-flight assistant message", () => {
+    const r = advanceStreamingNow(initialStreamingTickState(), {
+      messages: [{ role: "assistant", time: { created: 0, completed: 1000 } }],
+      now: 5000,
+    })
+    expect(r.phase).toBe("idle")
+    expect(r.speed).toBe(0)
+  })
+
+  test("warmup during in-flight before measurable speed", () => {
+    const r = advanceStreamingNow(initialStreamingTickState(), {
+      messages: [{ role: "assistant", id: "m1", time: { created: 9900 } }],
+      part,
+      now: 10000,
+    })
+    expect(r.phase).toBe("warmup")
+    expect(r.wasInFlight).toBe(true)
+  })
+
+  test("active with positive speed while streaming", () => {
+    const r = advanceStreamingNow(initialStreamingTickState(), {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0 } }],
+      part,
+      now: 1000,
+    })
+    expect(r.phase).toBe("active")
+    expect(r.speed).toBe(2)
+    expect(r.lastActiveSpeed).toBe(2)
+  })
+
+  test("holds last speed briefly after stream ends", () => {
+    const active = advanceStreamingNow(initialStreamingTickState(), {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0 } }],
+      part,
+      now: 1000,
+    })
+    const hold = advanceStreamingNow(active, {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0, completed: 1000 } }],
+      now: 1500,
+    })
+    expect(hold.phase).toBe("hold")
+    expect(hold.speed).toBe(2)
+    expect(hold.holdUntil).toBe(1500 + STREAMING_HOLD_MS)
+  })
+
+  test("returns idle after hold window expires", () => {
+    const active = advanceStreamingNow(initialStreamingTickState(), {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0 } }],
+      part,
+      now: 1000,
+    })
+    const hold = advanceStreamingNow(active, {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0, completed: 1000 } }],
+      now: 1500,
+    })
+    const idle = advanceStreamingNow(hold, {
+      messages: [{ role: "assistant", id: "m1", time: { created: 0, completed: 1000 } }],
+      now: 1500 + STREAMING_HOLD_MS + 1,
+    })
+    expect(idle.phase).toBe("idle")
+  })
+})
+
+describe("formatStreamingNowDisplay", () => {
+  test("idle shows stable dot label", () => {
+    expect(formatStreamingNowDisplay("idle", 0, "·")).toEqual({ value: "·", tone: "idle" })
+  })
+
+  test("warmup shows sub-1 tok/s with live tone", () => {
+    expect(formatStreamingNowDisplay("warmup", 0, "·")).toEqual({ value: "<1 tok/s", tone: "live" })
+  })
+
+  test("hold uses fading tone", () => {
+    expect(formatStreamingNowDisplay("hold", 23, "·")).toEqual({ value: "23 tok/s", tone: "fading" })
   })
 })

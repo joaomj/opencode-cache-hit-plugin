@@ -32,6 +32,8 @@ export type UiStrings = {
   tokPerSec: string
   trend: string
   ttft: string
+  /** Shown in Speed → Now when no stream is active (not a missing-data dash). */
+  streamingIdle: string
 }
 
 const EN: UiStrings = {
@@ -65,6 +67,7 @@ const EN: UiStrings = {
   tokPerSec: "tok/s",
   trend: "Trend:",
   ttft: "TTFT:",
+  streamingIdle: "·",
 }
 
 const ZH: UiStrings = {
@@ -98,6 +101,7 @@ const ZH: UiStrings = {
   tokPerSec: "tok/s",
   trend: "趋势:",
   ttft: "首Token:",
+  streamingIdle: "·",
 }
 
 export function resolveLang(raw: unknown): Lang {

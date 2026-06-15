@@ -2,6 +2,7 @@
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
 import type { DisplayConfig, CacheTTLConfig } from "./plugin-config.ts"
 import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary } from "./types.ts"
+import type { StreamingPhase } from "./token-speed.ts"
 import { PLUGIN_VERSION } from "./version.ts"
 import { AgentsView } from "./agents-view.tsx"
 import { MainSessionView } from "./main-session-view.tsx"
@@ -30,8 +31,7 @@ export function CacheHitSidebar(props: {
   providers: Accessor<ReadonlyArray<ProviderInfo>>
   formatCost: (amount: number) => string
   formatRate: (perMillion: number) => string
-  streamingSpeed: Accessor<number>
-  streamingSpeedLabel: Accessor<string>
+  streamingNow: Accessor<{ phase: StreamingPhase; speed: number }>
   firstPartTime: Accessor<ReadonlyMap<string, number>>
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
@@ -107,8 +107,7 @@ export function CacheHitSidebar(props: {
               speed={speed}
               model={model}
               showSpeed={props.display.showSpeed}
-              streamingSpeed={props.streamingSpeed}
-              streamingSpeedLabel={props.streamingSpeedLabel}
+              streamingNow={props.streamingNow}
               formatCost={props.formatCost}
               formatRate={props.formatRate}
               cacheTTL={props.cacheTTL}

@@ -43,9 +43,9 @@ type TextPart = {
 | **Trigger** | `message.updated` for an assistant message when no timestamp is stored yet |
 | **Fields** | Earliest `part.time.start` among `text` / `reasoning` parts from `api.state.part()` |
 | **Formula** | Same as source 1 |
-| **Accuracy** | Same as server-side when `time.start` is present on persisted parts |
+| **Accuracy** | Same as server-side when persisted parts include `time.start` |
 
-**Why `api.state.part()` is reliable**: OpenCode maintains a state store of all parts for each message. When `message.part.updated` or `message.part.delta` events don't fire (or fire after `message.updated`), we can still read the persisted `time.start` from this state. This is the most reliable fallback because it's always available when the message completes.
+**Role of `api.state.part()`**: OpenCode keeps a state store of parts per message. When part events are missing or arrive late, `message.updated` can scan this store for the earliest valid `time.start`. This works when parts were persisted with timing data; some backends (e.g. local models without a parts table) still have no usable `time.start` — see [ttft-troubleshooting.md](./ttft-troubleshooting.md).
 
 ## Priority rules
 
@@ -91,9 +91,7 @@ sequenceDiagram
 
 ## Sidebar display
 
-The **TTFT** row shows the latest **completed** non-summary assistant turn. Format: `944ms`, `1.2s`, or `"—"`.
-
-In-flight turns show `"—"` until `time.completed` is set.
+Shows the latest **completed** non-summary assistant turn (`944ms`, `1.2s`, or `"—"`). Display rules and troubleshooting: [ttft-troubleshooting.md](./ttft-troubleshooting.md).
 
 ## Timeline JSONL
 

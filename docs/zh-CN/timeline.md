@@ -47,7 +47,6 @@ export type LlmCallRecord = {
   /** OpenCode message id；SDK 若无则用稳定合成键，见下文 */
   messageKey: string
   modelId: string
-  providerId?: string      // Provider ID（如 "anthropic", "openai"）
   created: string
   completedAt?: string
   durationMs?: number
@@ -92,35 +91,29 @@ export type LlmCallRecord = {
 
 **`messageKey`（去重键）**
 
-1. 优先：`message.id` / `messageID`（实现前用真实 SDK 样本确认字段名，扩展 `AssistantMessage` 类型）。
-2. 回退：`${sessionId}:${created}:${modelID ?? ""}`（同一 created 极罕见碰撞；流式更新时 created 不变，可覆盖同键）。
+1. 优先：`message.id` / `messageID`。
+2. 回退：`${sessionId}:${created}:${modelID ?? ""}`。
 
-**流式更新策略**
+**流式与落盘**
 
-- `message.updated` 频繁触发时，**内存 Map<messageKey, LlmCallRecord>** 覆盖更新同一键。
-- **落盘**：仅在 `isComplete === true` 时 append 一行；或配置 `flushIncomplete: true` 时也写，行带 `isComplete`，便于分析 in-flight（默认 `false`，减少 JSONL 噪音）。
-- 未完成行在 TUI 时间轴里可显示为 `…` 后缀（可选）。
+- **内存**：每次 `handleMessage` 追加到 `collector.memoryRecords()`（受 `maxMemoryRows` 限制）。
+- **落盘**：默认仅 `isComplete === true` 时 append；`flushIncomplete: true` 时也写未完成行。
 
 ## 从消息构建记录
 
-新建纯函数模块 `src/timeline/records.ts`（不依赖 JSX）：
+事件驱动路径（`sidebar-host.tsx` → `timeline/collector.ts`）：
 
-```typescript
-export function buildCallRecords(
-  sessionId: string,
-  rootSessionId: string,
-  scope: "main" | "child",
-  messages: readonly AssistantMessage[],
-): LlmCallRecord[]
-```
+1. `message.updated` 携带一条 assistant `Message`。
+2. `handleMessage(sessionID, msg)` 判定 scope（`sessionID === root` 为 `main`，在 `childIds` 内为 `child`）。
+3. `src/timeline/records.ts` 的 `assistantMessageToRecord()` 生成一条 `LlmCallRecord`（TTFT 从注入的 `firstPartTime` tracker 读取）。
+4. `timeline.enabled` 且满足 flush 规则 → append 一行 JSONL。
 
-逻辑要点：
+记录规则（`assistantMessageToRecord`）：
 
 - 只处理 `role === assistant`。
 - `skippedForHit = msg.summary === true`。
-- `hitPercent`：与 `computePerCallHitTrend` 单条算法一致；`skippedForHit` 时可为 `null` 仍保留 token/cost 行（配置项 `logSummaryMessages`，默认 `true` 但标记 `skippedForHit`）。
-
-子 session：在 `sidebar-host` 已有 `childIds` 与 `refreshTick` 上，对每个 `cid` 调用 `buildCallRecords(cid, rootSid, "child", messages)`，与主 session 记录合并后按 `sortKey = completedAt ?? created` 排序。
+- `hitPercent` 与 `computePerCallHitTrend` 单条算法一致。
+- 子 session：对 `childIds` 中的 `sessionID` 同样走 `handleMessage`（v1 不做批量合并排序）。
 
 ## 存储
 
@@ -281,7 +274,7 @@ bun scripts/timeline-dashboard.ts --open
 
 ### Phase 3 — 指标切换联动
 
-- 与 design 里「累计 / 最近 N 轮」共用 `buildCallRecords`：
+- 与 design 里「累计 / 最近 N 轮」共用 `assistantMessageToRecord` / 事件流：
   - `window: "session" | "last1" | "lastN"`
   - 侧栏 Hit 行可选显示「最近一轮」而非「最后一条非 summary」（与 JSONL 一致）。
 
@@ -291,7 +284,7 @@ bun scripts/timeline-dashboard.ts --open
 |------|------|
 | `message-timing.ts` | 提供 `created` / `completed` / `formatTimingShort` |
 | `first-part-time.ts` | TTFT tracker（侧边栏 + JSONL 共用） |
-| `stats.ts` | 抽出共享 `perMessageHitPercent(msg)`，供 `computePerCallHitTrend` 与 `buildCallRecords` 共用 |
+| `stats.ts` | 抽出共享 `perMessageHitPercent(msg)`，供 `computePerCallHitTrend` 与 `assistantMessageToRecord` 共用 |
 | `sidebar-host.tsx` | `createFirstPartTimeTracker`（始终）；`createTimelineCollector`（enabled 时落盘） |
 | `plugin.tsx` | 无改动或仅读 config |
 
@@ -299,7 +292,7 @@ bun scripts/timeline-dashboard.ts --open
 
 | 用例 | 文件 |
 |------|------|
-| `buildCallRecords` 排序、summary、hitPercent | `tests/timeline-records.test.ts` |
+| `assistantMessageToRecord` 字段与 hitPercent | `tests/timeline-records.test.ts` |
 | first-part tracker | `tests/first-part-time.test.ts` |
 | 合成 `messageKey`、完成才 flush | `tests/timeline-writer.test.ts`（临时目录） |
 | collector 注入 tracker | `tests/timeline-collector.test.ts` |
@@ -308,7 +301,7 @@ bun scripts/timeline-dashboard.ts --open
 
 | 风险 | 缓解 |
 |------|------|
-| 流式写盘过多 | 默认仅 `isComplete` 落盘；debounce |
+| 流式写盘过多 | 默认仅 `isComplete` 落盘（`flushIncomplete: false`） |
 | 无 message id | 合成键 + 完成时覆盖内存 |
 | 子 agent 嵌套 | 第一期只 `scope: child` 平铺；递归列入 Phase 4 |
 | 磁盘膨胀 | `maxLinesPerFile` / `rotateMaxBytes` / `maxAgeDays`（已实现） |
@@ -325,7 +318,7 @@ bun scripts/timeline-dashboard.ts --open
 ## 示例 JSONL 行
 
 ```json
-{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:1716999990000:deepseek/v4","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"server","tps":8.83,"finish":"stop"}
 ```
 
 ---

@@ -42,7 +42,6 @@ export type LlmCallRecord = {
   scope: "main" | "child"
   messageKey: string
   modelId: string
-  providerId?: string      // Provider ID (e.g., "anthropic", "openai")
   created: string
   completedAt?: string
   durationMs?: number
@@ -90,17 +89,24 @@ When all sources fail (e.g. local models with no parts), `ttftMs` is omitted —
 
 **Streaming**
 
-- In-memory map keyed by `messageKey` is overwritten on each build.
+- **Memory**: `collector.memoryRecords()` appends on each `handleMessage` (capped by `maxMemoryRows`).
 - **Disk**: append when `isComplete === true` unless `flushIncomplete: true`.
 
 ## Building records
 
-Module: `src/timeline/records.ts` — `buildCallRecords(sessionId, rootSessionId, scope, messages)`.
+Event-driven path in `sidebar-host.tsx` → `timeline/collector.ts`:
+
+1. `message.updated` delivers one assistant `Message`.
+2. `handleMessage(sessionID, msg)` resolves scope (`main` if `sessionID === root`, else `child` if in `childIds`).
+3. `assistantMessageToRecord()` in `src/timeline/records.ts` builds one `LlmCallRecord` (reads TTFT from injected `firstPartTime` tracker).
+4. When `timeline.enabled` and flush rules pass → append one JSONL line.
+
+Record rules (`assistantMessageToRecord`):
 
 - Only `role === assistant`.
 - `skippedForHit = msg.summary === true`.
-- `hitPercent` matches `computePerCallHitTrend` per message.
-- Children: `buildCallRecords(cid, rootSid, "child", …)` merged and sorted by `completedAt ?? created`.
+- `hitPercent` uses the same per-message logic as `computePerCallHitTrend`.
+- Child sessions: same pipeline when `handleMessage` is called for a child `sessionID` in `childIds` (no batch merge in v1).
 
 ## Storage
 
@@ -264,7 +270,7 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 
 | Case | File |
 |------|------|
-| `buildCallRecords` | `tests/timeline-records.test.ts` |
+| `assistantMessageToRecord` | `tests/timeline-records.test.ts` |
 | first-part tracker | `tests/first-part-time.test.ts` |
 | writer / rotation / purge | `tests/timeline-writer.test.ts`, `timeline-rotation.test.ts` |
 | collector | `tests/timeline-collector.test.ts` |
@@ -273,7 +279,7 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 
 | Risk | Mitigation |
 |------|------------|
-| Too many writes while streaming | `isComplete` only; debounce |
+| Too many writes while streaming | `isComplete` only by default (`flushIncomplete: false`) |
 | No stable message id | synthetic `messageKey` |
 | Nested sub-agents | flat `child` scope only in v1 |
 | Disk growth | rotation + age + file count caps |
@@ -282,5 +288,5 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 ## Example line
 
 ```json
-{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:1716999990000:deepseek/v4","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"server","tps":8.83,"finish":"stop"}
 ```

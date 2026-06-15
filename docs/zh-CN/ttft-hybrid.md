@@ -45,7 +45,7 @@ type TextPart = {
 | **公式** | 与来源 1 相同 |
 | **精度** | part 已持久化且带 `time.start` 时与服务端等价 |
 
-**为什么 `api.state.part()` 可靠**：OpenCode 维护了每个消息所有 parts 的状态存储。当 `message.part.updated` 或 `message.part.delta` 事件未触发（或在 `message.updated` 之后触发）时，我们仍然可以从这个状态中读取已持久化的 `time.start`。这是最可靠的 fallback，因为消息完成时它总是可用的。
+**`api.state.part()` 的作用**：OpenCode 按消息维护 part 状态。part 事件缺失或晚到时，可在 `message.updated` 扫描最早的合法 `time.start`。仅当 parts 已持久化且含时序时有效；部分后端（如无 parts 表的本地模型）仍无可用 `time.start` — 见 [ttft-troubleshooting.md](./ttft-troubleshooting.md)。
 
 ## 优先级规则
 
@@ -91,9 +91,7 @@ sequenceDiagram
 
 ## 侧边栏展示
 
-**首Token** 行展示最近一条**已完成**、非 summary 的 assistant 轮次。格式：`944ms`、`1.2s` 或 `"—"`。
-
-进行中的轮次在 `time.completed` 出现前显示 `"—"`。
+展示最近一条**已完成**、非 summary 的 assistant 轮次（`944ms`、`1.2s` 或 `"—"`）。展示规则与排查见 [ttft-troubleshooting.md](./ttft-troubleshooting.md)。
 
 ## Timeline JSONL
 

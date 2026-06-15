@@ -24,8 +24,12 @@ import {
 } from "./stats.ts"
 import { createChildSessionSync } from "./child-session-sync.ts"
 import { loadPluginConfig } from "./load-config.ts"
-import { estimateStreamingSpeed, formatTokenSpeed } from "./token-speed.ts"
-import { computeAvgTokenSpeed } from "./token-speed.ts"
+import {
+  advanceStreamingNow,
+  computeAvgTokenSpeed,
+  initialStreamingTickState,
+  type StreamingPhase,
+} from "./token-speed.ts"
 
 const STREAM_FIELDS = new Set(["text", "reasoning"])
 
@@ -129,8 +133,11 @@ export function CacheHitSidebarHost(props: {
       .filter(Boolean) as SubAgentSummary[]
   })
 
-  const [streamingSpeed, setStreamingSpeed] = createSignal(0)
-  const streamingSpeedLabel = createMemo(() => formatTokenSpeed(streamingSpeed()))
+  const [streamingNow, setStreamingNow] = createSignal<{ phase: StreamingPhase; speed: number }>({
+    phase: "idle",
+    speed: 0,
+  })
+  let streamingTickState = initialStreamingTickState()
 
   const firstPartTime = createMemo(() => {
     void refreshTick()
@@ -160,36 +167,13 @@ export function CacheHitSidebarHost(props: {
   }
 
   const trackStreaming = () => {
-    const msgs = mainMessages()
-    if (!msgs.length) {
-      setStreamingSpeed(0)
-      return
-    }
-    const last = msgs[msgs.length - 1]
-    if (last.role !== "assistant" || last.time?.completed) {
-      setStreamingSpeed(0)
-      return
-    }
-    const messageId = last.id || last.messageID
-    if (!messageId) {
-      setStreamingSpeed(0)
-      return
-    }
-    if (!props.api.state.part) {
-      setStreamingSpeed(0)
-      return
-    }
-    const parts = props.api.state.part(messageId)
-    if (!parts?.length) {
-      setStreamingSpeed(0)
-      return
-    }
-    const text = parts
-      .filter((p) => p.type === "text" || p.type === "reasoning")
-      .map((p) => p.text ?? "")
-      .join("")
-    const speed = estimateStreamingSpeed(text, last.time!.created, Date.now())
-    setStreamingSpeed(speed)
+    const result = advanceStreamingNow(streamingTickState, {
+      messages: mainMessages(),
+      part: props.api.state.part,
+      now: Date.now(),
+    })
+    streamingTickState = result
+    setStreamingNow({ phase: result.phase, speed: result.speed })
   }
 
   createEffect(() => {
@@ -203,6 +187,8 @@ export function CacheHitSidebarHost(props: {
     childSync.resetForParentChange()
     timeline.resetForRootChange()
     firstPartTracker.reset()
+    streamingTickState = initialStreamingTickState()
+    setStreamingNow({ phase: "idle", speed: 0 })
     if (sid) {
       childSync.loadChildren()
     }
@@ -261,8 +247,7 @@ export function CacheHitSidebarHost(props: {
       providers={() => props.api.state.provider ?? []}
       formatCost={props.formatCost}
       formatRate={props.formatRate}
-      streamingSpeed={streamingSpeed}
-      streamingSpeedLabel={streamingSpeedLabel}
+      streamingNow={streamingNow}
       firstPartTime={firstPartTime}
     />
   )

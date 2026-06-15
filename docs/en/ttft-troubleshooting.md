@@ -27,7 +27,7 @@ Design details: [TTFT Hybrid Implementation](./ttft-hybrid.md).
 | **Now** during streaming | Likely cause |
 |--------------------------|--------------|
 | Shows tok/s | Parts exist; TTFT should usually appear once the turn completes. If not, see §2–3 |
-| Also `"—"` | `api.state.part()` may be empty — common with some local backends |
+| Shows `·` | `api.state.part()` may be empty — common with some local backends |
 
 ### 2. Provider / OpenCode limitations
 

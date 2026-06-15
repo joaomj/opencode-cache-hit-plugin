@@ -1,7 +1,8 @@
 /** @jsxImportSource @opentui/solid */
-import { Show } from "solid-js"
+import { Show, createMemo } from "solid-js"
 import { TokenDetailRows } from "./cache-hit-rows.tsx"
 import { CacheTTLView } from "./cache-ttl-view.tsx"
+import { formatStreamingNowDisplay, type StreamingPhase } from "./token-speed.ts"
 import type { CacheHitMetrics } from "./use-cache-hit-metrics.ts"
 import type { CacheTTLConfig } from "./plugin-config.ts"
 import type { AssistantMessage } from "./types.ts"
@@ -21,14 +22,17 @@ export function MainSessionView(props: {
   speed: SectionFold
   model: SectionFold
   showSpeed: boolean
-  streamingSpeed: Accessor<number>
-  streamingSpeedLabel: Accessor<string>
+  streamingNow: Accessor<{ phase: StreamingPhase; speed: number }>
   formatCost: (n: number) => string
   formatRate: (perMillion: number) => string
   cacheTTL?: CacheTTLConfig
   messages?: Accessor<AssistantMessage[]>
 }) {
   const { m, layout } = props
+  const streamingNowRow = createMemo(() => {
+    const now = props.streamingNow()
+    return formatStreamingNowDisplay(now.phase, now.speed, m.t().streamingIdle)
+  })
   return (
     <>
       <TuiHitRow
@@ -84,8 +88,12 @@ export function MainSessionView(props: {
             pal={m.pal()}
             layout={layout}
             label={m.t().now}
-            value={props.streamingSpeed() > 0 ? props.streamingSpeedLabel() : "—"}
-            fg={props.streamingSpeed() > 0 ? m.pal().success : m.pal().muted}
+            value={streamingNowRow().value}
+            fg={
+              streamingNowRow().tone === "live"
+                ? m.pal().success
+                : m.pal().muted
+            }
           />
           <TuiMetricRow
             pal={m.pal()}
