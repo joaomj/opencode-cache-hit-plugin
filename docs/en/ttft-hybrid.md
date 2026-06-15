@@ -45,6 +45,8 @@ type TextPart = {
 | **Formula** | Same as source 1 |
 | **Accuracy** | Same as server-side when `time.start` is present on persisted parts |
 
+**Why `api.state.part()` is reliable**: OpenCode maintains a state store of all parts for each message. When `message.part.updated` or `message.part.delta` events don't fire (or fire after `message.updated`), we can still read the persisted `time.start` from this state. This is the most reliable fallback because it's always available when the message completes.
+
 ## Priority rules
 
 Server timestamps win over client timestamps for the same message. Once a server value is stored, later client events are ignored. Client values can be upgraded when a valid server `time.start` arrives later.

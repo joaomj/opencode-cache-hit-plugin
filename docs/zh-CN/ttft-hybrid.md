@@ -45,6 +45,8 @@ type TextPart = {
 | **公式** | 与来源 1 相同 |
 | **精度** | part 已持久化且带 `time.start` 时与服务端等价 |
 
+**为什么 `api.state.part()` 可靠**：OpenCode 维护了每个消息所有 parts 的状态存储。当 `message.part.updated` 或 `message.part.delta` 事件未触发（或在 `message.updated` 之后触发）时，我们仍然可以从这个状态中读取已持久化的 `time.start`。这是最可靠的 fallback，因为消息完成时它总是可用的。
+
 ## 优先级规则
 
 同一消息上，服务端时间戳优先于客户端。已有服务端记录后，后续客户端事件被忽略。若更晚到达有效的服务端 `time.start`，可覆盖先前的客户端值。
