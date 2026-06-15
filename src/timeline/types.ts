@@ -20,6 +20,7 @@ export type LlmCallRecord = {
   hitPercent: number | null
   skippedForHit: boolean
   ttftMs?: number
+  ttftSource?: "server" | "client"
   tps?: number
   finish?: string
 }

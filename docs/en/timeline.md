@@ -56,6 +56,7 @@ export type LlmCallRecord = {
   hitPercent: number | null
   skippedForHit: boolean   // compaction / summary
   ttftMs?: number          // Time To First Token (firstPartTime - created)
+  ttftSource?: "server" | "client"  // TTFT data source
   tps?: number             // Tokens Per Second (output / genTime * 1000)
   finish?: string          // Finish reason (e.g., "stop", "tool-calls", "error")
 }
@@ -64,6 +65,17 @@ export type LlmCallRecord = {
 **`ttftMs` null handling**
 
 `ttftMs` is often `null` because OpenCode's `TextPart.time` is optional. When `part.time.start` is not provided by the SDK, TTFT cannot be calculated. This is expected behavior — not all providers/models set this field.
+
+**`ttftSource` (TTFT data source)**
+
+The plugin uses a hybrid approach to maximize TTFT availability:
+
+| Source | Description | Reliability |
+|--------|-------------|-------------|
+| `"server"` | From `part.time.start` in `message.part.updated` event | ✅ Most accurate (excludes network latency) |
+| `"client"` | From `Date.now()` on first `message.part.delta` event | ✅ Always available (includes network latency) |
+
+**Priority logic**: Server TTFT is preferred. Client TTFT is used as fallback when server timing is unavailable (e.g., provider doesn't set `part.time.start`, or SDK bug #21544 where `text-end` overwrote `time.start`).
 
 **`messageKey` (dedupe)**
 

@@ -40,7 +40,7 @@ export function useCacheHitMetrics(props: {
   subAgents: Accessor<SubAgentSummary[]>
   providers: Accessor<ReadonlyArray<ProviderInfo>>
   layout: PanelLayout
-  firstPartTime: Map<string, number>
+  firstPartTime: ReadonlyMap<string, number>
 }) {
   const pal = createMemo(() => buildPanelPalette(props.theme()))
   const t = createMemo(() => getUiStrings(activeLang(props.display)))

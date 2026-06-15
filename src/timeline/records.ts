@@ -32,6 +32,7 @@ export function assistantMessageToRecord(
   scope: "main" | "child",
   recordedAt: number,
   firstPartTime?: number,
+  ttftSource?: "server" | "client",
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
@@ -39,7 +40,11 @@ export function assistantMessageToRecord(
   const t = msg.tokens ?? {}
   const skippedForHit = msg.summary === true
   const output = t.output ?? 0
-  const ttftMs = firstPartTime !== undefined ? firstPartTime - timing.created : undefined
+  const ttftMs = firstPartTime !== undefined && firstPartTime > timing.created
+    ? firstPartTime - timing.created
+    : undefined
+  // Generation time: from first token to completion (excludes TTFT)
+  // Falls back to total duration when firstPartTime unavailable (includes TTFT)
   const genTimeMs = firstPartTime !== undefined && timing.completedAt !== undefined
     ? timing.completedAt - firstPartTime
     : timing.durationMs
@@ -67,6 +72,7 @@ export function assistantMessageToRecord(
     hitPercent: perMessageHitPercent(msg),
     skippedForHit,
     ttftMs,
+    ttftSource,
     tps,
     finish: msg.finish,
   }

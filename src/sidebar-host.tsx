@@ -116,7 +116,7 @@ export function CacheHitSidebarHost(props: {
 
   const [streamingSpeed, setStreamingSpeed] = createSignal(0)
   const streamingSpeedLabel = createMemo(() => formatTokenSpeed(streamingSpeed()))
-  const firstPartTime = new Map<string, number>()
+  const firstPartTime = timeline.getFirstPartTime()
 
   const trackStreaming = () => {
     const msgs = mainMessages()
@@ -179,16 +179,26 @@ export function CacheHitSidebarHost(props: {
   })
 
   createEffect(() => {
-    const unsub = props.api.event.on("message.part.updated", (event) => {
-      const part = (event.properties as any)?.part
-      if (part?.type === "text" && part?.time?.start) {
-        if (!firstPartTime.has(part.messageID)) {
-          firstPartTime.set(part.messageID, part.time.start)
-        }
-        timeline.handlePart(part.messageID, part.type, part.time.start)
+    const unsub1 = props.api.event.on("message.part.updated", (event) => {
+      const part = (event as PartUpdatedEvent).properties?.part
+      console.log("[cache-hit] message.part.updated", { part })
+      if (part?.type === "text" && part?.time?.start && part?.messageID) {
+        console.log("[cache-hit] handlePart server", part.messageID, part.time.start)
+        timeline.handlePart(part.messageID, part.type, part.time.start, "server")
       }
     })
-    onCleanup(() => unsub?.())
+    const unsub2 = props.api.event.on("message.part.delta", (event) => {
+      const eventProps = event.properties as { messageID?: string; partID?: string; field?: string } | undefined
+      console.log("[cache-hit] message.part.delta", { eventProps })
+      if (eventProps?.field === "text" && eventProps?.messageID) {
+        console.log("[cache-hit] handlePart client", eventProps.messageID)
+        timeline.handlePart(eventProps.messageID, "text", Date.now(), "client")
+      }
+    })
+    onCleanup(() => {
+      unsub1?.()
+      unsub2?.()
+    })
   })
 
   return (

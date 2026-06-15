@@ -58,6 +58,17 @@ export type ProviderInfo = {
 export type StreamPart = {
   type: string
   text?: string
+  time?: { start?: number }
+}
+
+export type PartUpdatedEvent = {
+  properties?: {
+    part?: {
+      type: string
+      messageID: string
+      time?: { start?: number }
+    }
+  }
 }
 
 /** Session aggregate from `api.state.session.get()` — DB-level totals, not capped by message limit. */
@@ -91,7 +102,7 @@ export type OpenCodeTuiApi = {
   event: {
     on: (
       name: string,
-      fn: (event: { properties?: { info?: { sessionID?: string } } }) => void,
+      fn: (event: { properties?: Record<string, unknown> }) => void,
     ) => () => void
   }
   slots: {

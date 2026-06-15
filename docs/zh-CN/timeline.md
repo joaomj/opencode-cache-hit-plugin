@@ -63,6 +63,7 @@ export type LlmCallRecord = {
   /** compaction / summary 消息 */
   skippedForHit: boolean
   ttftMs?: number          // 首 Token 延迟（firstPartTime - created）
+  ttftSource?: "server" | "client"  // TTFT 数据来源
   tps?: number             // 每秒 Token 数（output / genTime * 1000）
   finish?: string          // 完成原因（如 "stop", "tool-calls", "error"）
 }
@@ -71,6 +72,17 @@ export type LlmCallRecord = {
 **`ttftMs` null 处理**
 
 `ttftMs` 经常为 `null`，因为 OpenCode 的 `TextPart.time` 是可选字段。当 SDK 未提供 `part.time.start` 时，无法计算 TTFT。这是预期行为——并非所有 provider/模型都会设置此字段。
+
+**`ttftSource`（TTFT 数据来源）**
+
+插件使用混合方法来最大化 TTFT 可用性：
+
+| 来源 | 描述 | 可靠性 |
+|------|------|--------|
+| `"server"` | 来自 `message.part.updated` 事件中的 `part.time.start` | ✅ 最精确（不含网络延迟） |
+| `"client"` | 来自第一个 `message.part.delta` 事件的 `Date.now()` | ✅ 始终可用（包含网络延迟） |
+
+**优先级逻辑**：优先使用服务器端 TTFT。当服务器端时序不可用时（例如 provider 未设置 `part.time.start`，或 SDK bug #21544 导致 `text-end` 覆盖了 `time.start`），使用客户端 TTFT 作为兜底。
 
 **`messageKey`（去重键）**
 

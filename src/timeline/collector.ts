@@ -13,7 +13,9 @@ import type { LlmCallRecord } from "./types.ts"
 export type TimelineCollector = {
   /** Process a single message from a message.updated event. */
   handleMessage: (sessionID: string, msg: AssistantMessage) => void
-  handlePart: (messageID: string, partType: string, startTime: number) => void
+  handlePart: (messageID: string, partType: string, startTime: number, source?: "server" | "client") => void
+  /** Get read-only view of first part times (messageID → timestamp). */
+  getFirstPartTime: () => ReadonlyMap<string, number>
   resetForRootChange: () => void
   dispose: () => void
   memoryRecords: () => readonly LlmCallRecord[]
@@ -55,6 +57,7 @@ export function createTimelineCollector(opts: {
   let memory: LlmCallRecord[] = []
   let disposed = false
   const firstPartTime = new Map<string, number>()
+  const firstPartSource = new Map<string, "server" | "client">()
 
   const ensureDateKey = () => {
     const today = localDateKey()
@@ -64,10 +67,29 @@ export function createTimelineCollector(opts: {
     return today
   }
 
-  const handlePart = (messageID: string, partType: string, startTime: number) => {
+  const handlePart = (messageID: string, partType: string, startTime: number, source: "server" | "client" = "server") => {
     if (disposed) return
-    if (partType === "text" && !firstPartTime.has(messageID)) {
+    if (partType !== "text") return
+    
+    const existing = firstPartTime.get(messageID)
+    const existingSource = firstPartSource.get(messageID)
+    
+    // 优先使用服务器端 TTFT（不含网络延迟）
+    if (existing !== undefined && existingSource === "server") {
+      return // 已有服务器端 TTFT，忽略客户端 TTFT
+    }
+    
+    // 如果已有客户端 TTFT，但新来的是服务器端 TTFT，则替换
+    if (existing !== undefined && existingSource === "client" && source === "server") {
       firstPartTime.set(messageID, startTime)
+      firstPartSource.set(messageID, source)
+      return
+    }
+    
+    // 首次设置
+    if (existing === undefined) {
+      firstPartTime.set(messageID, startTime)
+      firstPartSource.set(messageID, source)
     }
   }
 
@@ -89,7 +111,7 @@ export function createTimelineCollector(opts: {
     if (!opts.config.logSummaryMessages && msg.summary === true) return
 
     const msgID = msg.id ?? msg.messageID ?? ""
-    const rec = assistantMessageToRecord(msg, sessionID, rootId, scope, Date.now(), firstPartTime.get(msgID))
+    const rec = assistantMessageToRecord(msg, sessionID, rootId, scope, Date.now(), firstPartTime.get(msgID), firstPartSource.get(msgID))
     if (!rec) return
     if (!opts.config.flushIncomplete && !rec.isComplete) return
 
@@ -101,21 +123,25 @@ export function createTimelineCollector(opts: {
     while (memory.length > max) memory.shift()
 
     if (rec.isComplete) {
-      firstPartTime.delete(msgID)
+      // Don't delete firstPartTime here - use-cache-hit-metrics needs it for display
+      // It will be cleaned up by resetForRootChange or dispose
     }
   }
 
   return {
     handleMessage,
     handlePart,
+    getFirstPartTime: () => firstPartTime,
     resetForRootChange: () => {
       memory = []
       firstPartTime.clear()
+      firstPartSource.clear()
     },
     dispose: () => {
       disposed = true
       memory = []
       firstPartTime.clear()
+      firstPartSource.clear()
     },
     memoryRecords: () => {
       const max = opts.config.maxMemoryRows
