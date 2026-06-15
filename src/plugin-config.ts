@@ -10,11 +10,14 @@ export type DisplayConfig = {
   panelBorder: boolean
   /** @deprecated Use panelBorder */
   agentsBorder?: boolean
+  /** Show token speed section. Default true. */
+  showSpeed: boolean
 }
 
 export const DEFAULT_DISPLAY: DisplayConfig = {
   lang: "en",
   panelBorder: true,
+  showSpeed: true,
 }
 
 export type TimelineConfig = {
@@ -113,6 +116,7 @@ export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
   if (typeof o.mainHitLabel === "string" && o.mainHitLabel.length > 0) d.mainHitLabel = o.mainHitLabel
   if (typeof o.panelBorder === "boolean") d.panelBorder = o.panelBorder
   else if (typeof o.agentsBorder === "boolean") d.panelBorder = o.agentsBorder
+  if (typeof o.showSpeed === "boolean") d.showSpeed = o.showSpeed
   return d
 }
 

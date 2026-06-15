@@ -18,6 +18,9 @@ import {
   shortModelName,
 } from "./stats.ts"
 import { computePricing, type PricingInfo } from "./pricing.ts"
+import { computeAvgTokenSpeed, computeTokenSpeed, formatTokenSpeed } from "./token-speed.ts"
+import { timingFromAssistantMessage } from "./message-timing.ts"
+import { formatSparkline, collectSpeedValues } from "./sparkline.ts"
 
 function activeLang(display: DisplayConfig) {
   return display.lang === "auto" ? resolveLang("auto") : display.lang
@@ -76,6 +79,38 @@ export function useCacheHitMetrics(props: {
     return { text: right, width: visualWidth(right) }
   })
 
+  const lastSpeed = createMemo(() => {
+    const msgs = props.messages()
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].summary) continue
+      const timing = timingFromAssistantMessage(msgs[i])
+      if (!timing?.isComplete || timing.durationMs === undefined) continue
+      const output = msgs[i].tokens?.output ?? 0
+      const reasoning = msgs[i].tokens?.reasoning ?? 0
+      if (output + reasoning === 0) continue
+      return computeTokenSpeed(output, reasoning, timing.durationMs)
+    }
+    return 0
+  })
+
+  const avgSpeed = createMemo(() => computeAvgTokenSpeed(props.messages()))
+
+  const speedValues = createMemo(() => {
+    const msgs = props.messages()
+    const records = msgs
+      .filter((msg) => msg.role === "assistant" && !msg.summary && msg.time?.completed)
+      .map((msg) => {
+        const timing = timingFromAssistantMessage(msg)
+        return {
+          durationMs: timing?.durationMs,
+          output: (msg.tokens?.output ?? 0) + (msg.tokens?.reasoning ?? 0),
+        }
+      })
+    return collectSpeedValues(records)
+  })
+
+  const sparkline = createMemo(() => formatSparkline(speedValues()))
+
   return {
     pal,
     t,
@@ -96,6 +131,11 @@ export function useCacheHitMetrics(props: {
     modelShort: createMemo(() => shortModelName(main().model)),
     totalSubCost: createMemo(() => subs().reduce((s, a) => s + a.cost, 0)),
     collapsedHitSummary,
+    lastSpeed,
+    lastSpeedLabel: createMemo(() => formatTokenSpeed(lastSpeed())),
+    avgSpeed,
+    avgSpeedLabel: createMemo(() => formatTokenSpeed(avgSpeed())),
+    sparkline,
   }
 }
 

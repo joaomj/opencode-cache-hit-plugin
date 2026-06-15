@@ -144,6 +144,17 @@ describe("toSubAgentSummary", () => {
     })
     expect(s.id).toBe("cid")
     expect(s.cacheWrite).toBe(2)
+    expect(s.speed).toBeUndefined()
+  })
+
+  test("includes speed when provided", () => {
+    const s = toSubAgentSummary("cid", { ...emptySessionSnapshot(), input: 1 }, 42)
+    expect(s.speed).toBe(42)
+  })
+
+  test("speed defaults to undefined when not provided", () => {
+    const s = toSubAgentSummary("cid", emptySessionSnapshot())
+    expect(s.speed).toBeUndefined()
   })
 })
 

@@ -6,7 +6,9 @@ OpenCode **TUI sidebar plugin** for prompt **cache hit rate**, **token usage**, 
 
 **Languages:** English (this file) · [简体中文](README.zh-CN.md) · [Documentation](docs/README.md)
 
-![Cache Hit sidebar panel](docs/assets/cache-hit-panel.v3.png)
+![Cache Hit sidebar panel](docs/assets/cache-hit-panel.v4.png)
+
+![Cache Hit dashboard](docs/assets/cache-hit-dashboard.png)
 
 ## Why this plugin
 

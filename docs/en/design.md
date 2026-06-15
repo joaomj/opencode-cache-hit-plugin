@@ -134,7 +134,7 @@ The UI shows `agentsScopeHint` (“sub-sessions only”). This complements visua
 
 ### Sub-agent row display
 
-When multiple child sessions run in parallel, each active sub-agent gets a metric row under **Agents** (see screenshot `docs/assets/cache-hit-panel.v3.png`).
+When multiple child sessions run in parallel, each active sub-agent gets a metric row under **Agents** (see screenshot `docs/assets/cache-hit-panel.v4.png`).
 
 | Aspect | Behavior |
 |--------|----------|

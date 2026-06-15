@@ -30,9 +30,12 @@ export function CacheHitSidebar(props: {
   providers: Accessor<ReadonlyArray<ProviderInfo>>
   formatCost: (amount: number) => string
   formatRate: (perMillion: number) => string
+  streamingSpeed: Accessor<number>
+  streamingSpeedLabel: Accessor<string>
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
   const detail = createSectionFold(true)
+  const speed = createSectionFold(true)
   const model = createSectionFold(true)
   const agents = createSectionFold(true)
 
@@ -99,7 +102,11 @@ export function CacheHitSidebar(props: {
               m={m}
               layout={layout}
               detail={detail}
+              speed={speed}
               model={model}
+              showSpeed={props.display.showSpeed}
+              streamingSpeed={props.streamingSpeed}
+              streamingSpeedLabel={props.streamingSpeedLabel}
               formatCost={props.formatCost}
               formatRate={props.formatRate}
               cacheTTL={props.cacheTTL}

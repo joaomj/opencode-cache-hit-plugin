@@ -53,7 +53,7 @@ export function aggregateSessionFromMessages(messages: readonly AssistantMessage
   return { model, providerID, input, output, reasoning, cacheRead, cacheWrite, cost }
 }
 
-export function toSubAgentSummary(id: string, snap: SessionSnapshot): SubAgentSummary {
+export function toSubAgentSummary(id: string, snap: SessionSnapshot, speed?: number): SubAgentSummary {
   return {
     id,
     model: snap.model,
@@ -64,6 +64,7 @@ export function toSubAgentSummary(id: string, snap: SessionSnapshot): SubAgentSu
     reasoning: snap.reasoning,
     cacheRead: snap.cacheRead,
     cacheWrite: snap.cacheWrite,
+    speed,
   }
 }
 

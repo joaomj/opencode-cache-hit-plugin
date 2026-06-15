@@ -25,6 +25,12 @@ export type UiStrings = {
   agentsScopeHint: string
   secTTL: string
   tok: string
+  secSpeed: string
+  lastCall: string
+  avg: string
+  now: string
+  tokPerSec: string
+  trend: string
 }
 
 const EN: UiStrings = {
@@ -51,6 +57,12 @@ const EN: UiStrings = {
   agentsScopeHint: " · sub-sessions",
   secTTL: "TTL:",
   tok: "tok",
+  secSpeed: "Speed",
+  lastCall: "Last:",
+  avg: "Avg:",
+  now: "Now:",
+  tokPerSec: "tok/s",
+  trend: "Trend:",
 }
 
 const ZH: UiStrings = {
@@ -77,6 +89,12 @@ const ZH: UiStrings = {
   agentsScopeHint: " · 仅子会话",
   secTTL: "存活:",
   tok: "tok",
+  secSpeed: "速度",
+  lastCall: "最近:",
+  avg: "平均:",
+  now: "实时:",
+  tokPerSec: "tok/s",
+  trend: "趋势:",
 }
 
 export function resolveLang(raw: unknown): Lang {

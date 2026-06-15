@@ -15,6 +15,8 @@ import {
 } from "./stats.ts"
 import { createChildSessionSync } from "./child-session-sync.ts"
 import { loadPluginConfig } from "./load-config.ts"
+import { estimateStreamingSpeed, formatTokenSpeed } from "./token-speed.ts"
+import { computeAvgTokenSpeed } from "./token-speed.ts"
 
 /**
  * Session-scoped sidebar host. Bumps `refreshTick` on message.updated
@@ -98,16 +100,59 @@ export function CacheHitSidebarHost(props: {
           if (subAgentHasStats(snap)) {
             const msgs = props.api.state.session.messages(cid) as AssistantMessage[] | undefined
             const merged = msgs ? withModelFallback(snap, msgs) : snap
-            return toSubAgentSummary(cid, merged)
+            const speed = msgs ? computeAvgTokenSpeed(msgs) : 0
+            return toSubAgentSummary(cid, merged, speed)
           }
         }
         const msgs = props.api.state.session.messages(cid)
         if (!msgs?.length) return null
         const snap = aggregateSessionFromMessages(msgs as AssistantMessage[])
         if (!subAgentHasStats(snap)) return null
-        return toSubAgentSummary(cid, snap)
+        const speed = computeAvgTokenSpeed(msgs as AssistantMessage[])
+        return toSubAgentSummary(cid, snap, speed)
       })
       .filter(Boolean) as SubAgentSummary[]
+  })
+
+  const [streamingSpeed, setStreamingSpeed] = createSignal(0)
+  const streamingSpeedLabel = createMemo(() => formatTokenSpeed(streamingSpeed()))
+
+  const trackStreaming = () => {
+    const msgs = mainMessages()
+    if (!msgs.length) {
+      setStreamingSpeed(0)
+      return
+    }
+    const last = msgs[msgs.length - 1]
+    if (last.role !== "assistant" || last.time?.completed) {
+      setStreamingSpeed(0)
+      return
+    }
+    const messageId = last.id || last.messageID
+    if (!messageId) {
+      setStreamingSpeed(0)
+      return
+    }
+    if (!props.api.state.part) {
+      setStreamingSpeed(0)
+      return
+    }
+    const parts = props.api.state.part(messageId)
+    if (!parts?.length) {
+      setStreamingSpeed(0)
+      return
+    }
+    const text = parts
+      .filter((p) => p.type === "text" || p.type === "reasoning")
+      .map((p) => p.text ?? "")
+      .join("")
+    const speed = estimateStreamingSpeed(text, last.time!.created, Date.now())
+    setStreamingSpeed(speed)
+  }
+
+  createEffect(() => {
+    const interval = setInterval(trackStreaming, 1000)
+    onCleanup(() => clearInterval(interval))
   })
 
   createEffect(() => {
@@ -144,6 +189,8 @@ export function CacheHitSidebarHost(props: {
       providers={() => props.api.state.provider ?? []}
       formatCost={props.formatCost}
       formatRate={props.formatRate}
+      streamingSpeed={streamingSpeed}
+      streamingSpeedLabel={streamingSpeedLabel}
     />
   )
 }

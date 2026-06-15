@@ -19,6 +19,7 @@ export type SubAgentSummary = {
   reasoning: number
   cacheRead: number
   cacheWrite: number
+  speed?: number
 }
 
 export type AssistantMessage = {
@@ -53,6 +54,11 @@ export type ProviderInfo = {
   models: { [key: string]: { cost: ModelCost } }
 }
 
+export type StreamPart = {
+  type: string
+  text?: string
+}
+
 /** Session aggregate from `api.state.session.get()` — DB-level totals, not capped by message limit. */
 export type SessionObject = {
   model?: { id: string; providerID: string }
@@ -74,6 +80,7 @@ export type OpenCodeTuiApi = {
       messages: (id: string) => unknown[] | undefined
       get: (id: string) => SessionObject | undefined
     }
+    part: (messageID: string) => ReadonlyArray<StreamPart> | undefined
   }
   client: {
     session: {

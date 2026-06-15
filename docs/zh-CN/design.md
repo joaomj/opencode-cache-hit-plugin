@@ -134,7 +134,7 @@ flowchart TD
 
 ### 子 session 行展示
 
-多个子 session 并行时，**Agents** 段下每个有活动的子 session 一行（见截图 `docs/assets/cache-hit-panel.v3.png`）。
+多个子 session 并行时，**Agents** 段下每个有活动的子 session 一行（见截图 `docs/assets/cache-hit-panel.v4.png`）。
 
 | 方面 | 行为 |
 |------|------|

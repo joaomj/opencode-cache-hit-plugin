@@ -6,7 +6,9 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 **语言：** [English](README.md) · 简体中文（本页）· [文档索引](docs/README.md)
 
-![Cache Hit 侧边栏](docs/assets/cache-hit-panel.v3.png)
+![Cache Hit 侧边栏](docs/assets/cache-hit-panel.v4.zh.png)
+
+![Cache Hit 仪表盘](docs/assets/cache-hit-dashboard.png)
 
 ## 项目意图
 

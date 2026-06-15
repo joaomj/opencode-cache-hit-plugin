@@ -18,7 +18,11 @@ export function MainSessionView(props: {
   m: CacheHitMetrics
   layout: PanelLayout
   detail: SectionFold
+  speed: SectionFold
   model: SectionFold
+  showSpeed: boolean
+  streamingSpeed: Accessor<number>
+  streamingSpeedLabel: Accessor<string>
   formatCost: (n: number) => string
   formatRate: (perMillion: number) => string
   cacheTTL?: CacheTTLConfig
@@ -67,6 +71,44 @@ export function MainSessionView(props: {
           </Show>
         </TokenDetailRows>
       </TuiSection>
+
+      <Show when={props.showSpeed}>
+        <TuiSection
+          pal={m.pal()}
+          layout={layout}
+          open={props.speed.open()}
+          title={m.t().secSpeed}
+          onToggle={props.speed.toggle}
+        >
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label={m.t().now}
+            value={props.streamingSpeed() > 0 ? props.streamingSpeedLabel() : "—"}
+            fg={props.streamingSpeed() > 0 ? m.pal().success : m.pal().muted}
+          />
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label={m.t().lastCall}
+            value={m.lastSpeedLabel()}
+          />
+          <TuiMetricRow
+            pal={m.pal()}
+            layout={layout}
+            label={m.t().avg}
+            value={m.avgSpeedLabel()}
+          />
+          <Show when={m.sparkline()}>
+            <TuiMetricRow
+              pal={m.pal()}
+              layout={layout}
+              label={m.t().trend}
+              value={m.sparkline()}
+            />
+          </Show>
+        </TuiSection>
+      </Show>
 
       <TuiSection
         pal={m.pal()}
