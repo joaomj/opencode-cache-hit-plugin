@@ -71,18 +71,24 @@ export type LlmCallRecord = {
 
 **`ttftMs` null 处理**
 
-`ttftMs` 经常为 `null`，因为 OpenCode 的 `TextPart.time` 是可选字段。当 SDK 未提供 `part.time.start` 时，无法计算 TTFT。这是预期行为——并非所有 provider/模型都会设置此字段。
+某条消息未捕获到首 part 时间时，`ttftMs` 可能缺失。侧边栏 **首Token** 使用同一 tracker，**不依赖** `timeline.enabled`；JSONL 仅在开启 timeline 落盘时写入 `ttftMs`。
+
+捕获顺序（见 [ttft-hybrid.md](./ttft-hybrid.md)）：
+
+1. `message.part.updated` — `text` / `reasoning` 的 `part.time.start`（服务端）
+2. `message.part.delta` — 首个 `text` / `reasoning` 增量上的 `Date.now()`（客户端）
+3. `message.updated` — 仍缺失时扫描 `api.state.part()` 取最早有效 `time.start`
+
+全部失败时（如本地模型无 parts）省略 `ttftMs` — 部分 provider 下的预期行为。
 
 **`ttftSource`（TTFT 数据来源）**
 
-插件使用混合方法来最大化 TTFT 可用性：
-
 | 来源 | 描述 | 可靠性 |
 |------|------|--------|
-| `"server"` | 来自 `message.part.updated` 事件中的 `part.time.start` | ✅ 最精确（不含网络延迟） |
-| `"client"` | 来自第一个 `message.part.delta` 事件的 `Date.now()` | ✅ 始终可用（包含网络延迟） |
+| `"server"` | part 事件或 `api.state.part()` 扫描的 `part.time.start` | ✅ 最精确（不含网络延迟） |
+| `"client"` | 首个 `message.part.delta` 的 `Date.now()` | ✅ BusEvent 正常投递时可用 |
 
-**优先级逻辑**：优先使用服务器端 TTFT。当服务器端时序不可用时（例如 provider 未设置 `part.time.start`，或 SDK bug #21544 导致 `text-end` 覆盖了 `time.start`），使用客户端 TTFT 作为兜底。
+**优先级逻辑**：优先服务端；一旦已有服务端记录则不被客户端覆盖。无效时间戳（`start <= created`）会被丢弃。
 
 **`messageKey`（去重键）**
 
@@ -284,8 +290,9 @@ bun scripts/timeline-dashboard.ts --open
 | 模块 | 关系 |
 |------|------|
 | `message-timing.ts` | 提供 `created` / `completed` / `formatTimingShort` |
+| `first-part-time.ts` | TTFT tracker（侧边栏 + JSONL 共用） |
 | `stats.ts` | 抽出共享 `perMessageHitPercent(msg)`，供 `computePerCallHitTrend` 与 `buildCallRecords` 共用 |
-| `sidebar-host.tsx` | 挂载 `createTimelineCollector`（enabled 时） |
+| `sidebar-host.tsx` | `createFirstPartTimeTracker`（始终）；`createTimelineCollector`（enabled 时落盘） |
 | `plugin.tsx` | 无改动或仅读 config |
 
 ## 测试
@@ -293,8 +300,9 @@ bun scripts/timeline-dashboard.ts --open
 | 用例 | 文件 |
 |------|------|
 | `buildCallRecords` 排序、summary、hitPercent | `tests/timeline-records.test.ts` |
+| first-part tracker | `tests/first-part-time.test.ts` |
 | 合成 `messageKey`、完成才 flush | `tests/timeline-writer.test.ts`（临时目录） |
-| 不启用时 writer 不被调用 | 可选 mock |
+| collector 注入 tracker | `tests/timeline-collector.test.ts` |
 
 ## 风险与约束
 

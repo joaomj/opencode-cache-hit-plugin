@@ -40,7 +40,7 @@ export function useCacheHitMetrics(props: {
   subAgents: Accessor<SubAgentSummary[]>
   providers: Accessor<ReadonlyArray<ProviderInfo>>
   layout: PanelLayout
-  firstPartTime: ReadonlyMap<string, number>
+  firstPartTime: Accessor<ReadonlyMap<string, number>>
 }) {
   const pal = createMemo(() => buildPanelPalette(props.theme()))
   const t = createMemo(() => getUiStrings(activeLang(props.display)))
@@ -118,10 +118,11 @@ export function useCacheHitMetrics(props: {
       if (msgs[i].summary) continue
       const msgID = msgs[i].id ?? msgs[i].messageID
       if (!msgID) continue
-      const firstTime = props.firstPartTime.get(msgID)
+      const firstTime = props.firstPartTime().get(msgID)
       if (firstTime === undefined) continue
       const timing = timingFromAssistantMessage(msgs[i])
       if (!timing?.isComplete) continue
+      if (firstTime <= timing.created) continue
       return firstTime - timing.created
     }
     return undefined

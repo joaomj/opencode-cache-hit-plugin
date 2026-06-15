@@ -34,7 +34,8 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 |------|------|
 | `src/token-speed.ts` | **新建** — 速度计算函数 |
 | `src/sparkline.ts` | **新建** — 迷你图渲染 |
-| `src/use-cache-hit-metrics.ts` | 新增响应式信号 |
+| `src/first-part-time.ts` | TTFT tracker（侧边栏 + timeline） |
+| `src/use-cache-hit-metrics.ts` | 速度 + TTFT 响应式计算 |
 | `src/main-session-view.tsx` | 速度区域 UI |
 | `src/sidebar-host.tsx` | 流式跟踪、子 Agent 速度 |
 | `src/agents-view.tsx` | 子 Agent 速度行 |
@@ -81,6 +82,7 @@ MiMo-Code 的 TUI 侧边栏使用两种模式显示速度：
 │   最近: 48 tok/s                         │
 │   平均: 42 tok/s                          │
 │   趋势: ▁▃▅▇▆▄▂                         │
+│   首Token: 944ms                         │  ← 最近完成轮次（或 "—"）
 │                                          │
 │ ▼ 模型                                   │
 │   费用: $0.20                            │

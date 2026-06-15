@@ -1,192 +1,131 @@
 # TTFT Hybrid Implementation
 
-This document explains the hybrid Time To First Token (TTFT) measurement approach used in opencode-cache-hit, which combines server-side and client-side timing to maximize reliability.
+This document describes how opencode-cache-hit measures **Time To First Token (TTFT)** in the sidebar **Speed** section (and in optional timeline JSONL when `timeline.enabled` is true).
 
-## Problem Statement
+## Background
 
-OpenCode's `TextPart.time` field is **optional** in the SDK type definition:
+OpenCode exposes optional per-part timing:
 
 ```typescript
 type TextPart = {
-  time?: { start: number; end?: number }  // Optional!
+  time?: { start: number; end?: number }  // optional
 }
 ```
 
-This means `part.time?.start` is frequently `undefined`, causing TTFT calculations to fail. The root causes include:
+`part.time.start` is often missing because of SDK design, provider differences, proxies, event ordering, or upstream bugs (e.g. [#21544](https://github.com/anomalyco/opencode/issues/21544)). The plugin therefore combines several data sources.
 
-1. **SDK design** - `TextPart.time` is optional, not all providers set it
-2. **Provider differences** - Some providers don't return timing data
-3. **Proxy/OpenRouter** - Intermediary layers may strip timing data
-4. **Event ordering** - `message.part.updated` may fire before `time.start` is set
-5. **Known SDK bugs** - Issue #21544 where `text-end` overwrote `time.start`
+**Sidebar TTFT is always collected** via `src/first-part-time.ts`. **`timeline.enabled` only controls JSONL disk writes** — not the sidebar row.
 
-## Solution: Hybrid TTFT Measurement
+## Data sources (priority order)
 
-The plugin uses a two-source approach:
+### 1. Server-side timing (preferred)
 
-### Source 1: Server-side TTFT (Preferred)
+| | |
+|--|--|
+| **Trigger** | `message.part.updated` |
+| **Fields** | `part.time.start` on `text` or `reasoning` parts |
+| **Formula** | `ttftMs = part.time.start - msg.time.created` |
+| **Accuracy** | Best — excludes client network latency |
 
-**Event**: `message.part.updated`
-**Data**: `part.time.start`
-**Formula**: `ttftMs = part.time.start - msg.time.created`
+### 2. Client-side timing (fallback)
 
-**Pros**:
-- Most accurate (excludes network latency)
-- Reflects actual server-side first token time
+| | |
+|--|--|
+| **Trigger** | First `message.part.delta` with `field` = `text` or `reasoning` |
+| **Fields** | `Date.now()` at receive time |
+| **Formula** | `ttftMs = Date.now() - msg.time.created` |
+| **Accuracy** | Includes network latency; depends on BusEvent delivery |
 
-**Cons**:
-- Frequently unavailable (optional field)
-- Subject to SDK bugs and provider limitations
+### 3. Part-state scan (fallback)
 
-### Source 2: Client-side TTFT (Fallback)
+| | |
+|--|--|
+| **Trigger** | `message.updated` for an assistant message when no timestamp is stored yet |
+| **Fields** | Earliest `part.time.start` among `text` / `reasoning` parts from `api.state.part()` |
+| **Formula** | Same as source 1 |
+| **Accuracy** | Same as server-side when `time.start` is present on persisted parts |
 
-**Event**: `message.part.delta` (first occurrence)
-**Data**: `Date.now()`
-**Formula**: `ttftMs = Date.now() - msg.time.created`
+## Priority rules
 
-**Pros**:
-- Always available
-- Not affected by SDK bugs or provider limitations
+Server timestamps win over client timestamps for the same message. Once a server value is stored, later client events are ignored. Client values can be upgraded when a valid server `time.start` arrives later.
 
-**Cons**:
-- Includes network latency
-- May be slightly less accurate than server-side
+Timestamps with `start <= msg.time.created` are discarded (clock skew / bad SDK data).
 
-## Priority Logic
+Logic lives in `createFirstPartTimeTracker()` (`src/first-part-time.ts`).
 
-```typescript
-const handlePart = (messageID, partType, startTime, source) => {
-  const existing = firstPartTime.get(messageID)
-  const existingSource = firstPartSource.get(messageID)
-  
-  // Prefer server-side TTFT
-  if (existing !== undefined && existingSource === "server") {
-    return  // Already have server-side TTFT, ignore client-side
-  }
-  
-  // Replace client-side with server-side when available
-  if (existing !== undefined && existingSource === "client" && source === "server") {
-    firstPartTime.set(messageID, startTime)
-    firstPartSource.set(messageID, source)
-    return
-  }
-  
-  // First time setting
-  if (existing === undefined) {
-    firstPartTime.set(messageID, startTime)
-    firstPartSource.set(messageID, source)
-  }
-}
-```
-
-## Data Flow
+## Data flow
 
 ```mermaid
 sequenceDiagram
     participant SDK as OpenCode SDK
-    participant Plugin as opencode-cache-hit
-    participant Timeline as Timeline Collector
-    
-    Note over SDK: LLM streaming starts
-    SDK->>Plugin: message.part.updated (text, time.start)
-    Plugin->>Timeline: handlePart(msgID, "text", time.start, "server")
-    Timeline->>Timeline: Store firstPartTime[msgID] = time.start
-    
-    Note over SDK: If no time.start available
-    SDK->>Plugin: message.part.delta (text)
-    Plugin->>Timeline: handlePart(msgID, "text", Date.now(), "client")
-    Timeline->>Timeline: Store firstPartTime[msgID] = Date.now()
-    
-    Note over SDK: LLM streaming completes
-    SDK->>Plugin: message.updated (assistant, time.completed)
-    Plugin->>Timeline: handleMessage(sessionID, msg)
-    Timeline->>Timeline: ttftMs = firstPartTime[msgID] - msg.time.created
-    Timeline->>Timeline: Record with ttftSource
+    participant Host as sidebar-host
+    participant Tracker as first-part-time
+    participant UI as Speed section
+    participant Timeline as timeline JSONL
+
+    Note over SDK: Streaming starts
+    SDK->>Host: message.part.updated
+    Host->>Tracker: store server time.start
+
+    Note over SDK: No time.start on event
+    SDK->>Host: message.part.delta
+    Host->>Tracker: store client Date.now()
+
+    Note over SDK: Turn completes
+    SDK->>Host: message.updated
+    Host->>Tracker: scan api.state.part if still empty
+    Host->>UI: show last completed TTFT
+    Host->>Timeline: append record if timeline.enabled
 ```
 
-## Implementation Details
+## Modules
 
-### Event Handling
+| Module | Role |
+|--------|------|
+| `src/first-part-time.ts` | Per-message first-part timestamps |
+| `src/sidebar-host.tsx` | Subscribes to part / message events |
+| `src/use-cache-hit-metrics.ts` | `lastTtft` / `lastTtftLabel` for the sidebar |
+| `src/timeline/collector.ts` | Writes `ttftMs` / `ttftSource` when timeline is enabled |
 
-```typescript
-// sidebar-host.tsx
+## Sidebar display
 
-// Server-side TTFT (preferred)
-createEffect(() => {
-  const unsub = props.api.event.on("message.part.updated", (event) => {
-    const part = event.properties?.part
-    if (part?.type === "text" && part?.time?.start && part?.messageID) {
-      timeline.handlePart(part.messageID, part.type, part.time.start, "server")
-    }
-  })
-})
+The **TTFT** row shows the latest **completed** non-summary assistant turn. Format: `944ms`, `1.2s`, or `"—"`.
 
-// Client-side TTFT (fallback)
-createEffect(() => {
-  const unsub = props.api.event.on("message.part.delta", (event) => {
-    const props = event.properties
-    if (props?.field === "text" && props?.messageID) {
-      timeline.handlePart(props.messageID, "text", Date.now(), "client")
-    }
-  })
-})
-```
+In-flight turns show `"—"` until `time.completed` is set.
 
-### Data Storage
+## Timeline JSONL
+
+When `timeline.enabled: true`, each completed assistant record may include:
 
 ```typescript
-// timeline/collector.ts
-const firstPartTime = new Map<string, number>()
-const firstPartSource = new Map<string, "server" | "client">()
-```
-
-### Record Output
-
-```typescript
-// timeline/types.ts
-export type LlmCallRecord = {
+{
   ttftMs?: number
   ttftSource?: "server" | "client"
-  // ... other fields
 }
 ```
 
-## Comparison with Other Plugins
+Same tracker as the sidebar; see [timeline.md](./timeline.md).
 
-| Plugin | TTFT Approach | Reliability |
-|--------|---------------|-------------|
-| **opencode-throughput** | `part.time?.start` only | ❌ Frequently null |
-| **opencode-hud** | `performance.now()` only | ✅ Always available |
-| **opencode-tps-counter** | Hybrid (recommended) | ✅ Best of both |
-| **opencode-cache-hit** | Hybrid (this plugin) | ✅ Best of both |
+## Comparison with other plugins
 
-## Testing
+| Plugin | Approach |
+|--------|----------|
+| opencode-throughput | `part.time.start` only |
+| opencode-hud | Client `performance.now()` only |
+| opencode-cache-hit | Server + client + part-state scan |
 
-The implementation includes comprehensive tests:
+## Tests
 
-```typescript
-test("preserves ttftSource when provided", () => {
-  const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500, "server")
-  expect(rec!.ttftSource).toBe("server")
-})
-
-test("ttftSource undefined when not provided", () => {
-  const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500)
-  expect(rec!.ttftSource).toBeUndefined()
-})
-```
-
-## Future Improvements
-
-1. **UI indication** - Show TTFT source in the sidebar (server vs client)
-2. **Statistics** - Track TTFT availability by provider
-3. **Configuration** - Allow users to prefer one source over another
-4. **Fallback chain** - Add more fallback sources (e.g., reasoning part timing)
+| Area | File |
+|------|------|
+| Tracker | `tests/first-part-time.test.ts` |
+| Record fields | `tests/timeline-records.test.ts` |
+| Timeline integration | `tests/timeline-collector.test.ts` |
 
 ## References
 
-- [OpenCode SDK TextPart type](https://github.com/anomalyco/opencode/blob/dev/packages/opencode/src/session/message-v2.ts)
-- [OpenCode Issue #21544](https://github.com/anomalyco/opencode/issues/21544) - text-end overwrites time.start
-- [OpenCode Issue #26924](https://github.com/anomalyco/opencode/issues/26924) - message.part.updated arrives after message.part.delta
-- [opencode-throughput](https://github.com/Howardzhangdqs/opencode-throughput) - Reference implementation
-- [opencode-hud](https://github.com/Alaye-Dong/opencode-hud) - Alternative approach using performance.now()
+- [TTFT Troubleshooting](./ttft-troubleshooting.md)
+- [OpenCode Issue #21544](https://github.com/anomalyco/opencode/issues/21544)
+- [OpenCode Issue #26924](https://github.com/anomalyco/opencode/issues/26924)
+- [OpenCode Issue #27663](https://github.com/anomalyco/opencode/issues/27663)
+- [OpenCode Issue #23673](https://github.com/anomalyco/opencode/issues/23673)

@@ -32,7 +32,7 @@ export function CacheHitSidebar(props: {
   formatRate: (perMillion: number) => string
   streamingSpeed: Accessor<number>
   streamingSpeedLabel: Accessor<string>
-  firstPartTime: ReadonlyMap<string, number>
+  firstPartTime: Accessor<ReadonlyMap<string, number>>
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
   const detail = createSectionFold(true)

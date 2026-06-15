@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test"
+import { createFirstPartTimeTracker } from "../src/first-part-time.ts"
 import { createTimelineCollector } from "../src/timeline/collector.ts"
 import { DEFAULT_TIMELINE } from "../src/plugin-config.ts"
 import type { AssistantMessage } from "../src/types.ts"
@@ -14,9 +15,38 @@ function msg(overrides: Partial<AssistantMessage> = {}): AssistantMessage {
   } as AssistantMessage
 }
 
+function collector(
+  opts: Omit<Parameters<typeof createTimelineCollector>[0], "firstPartTime"> & {
+    firstPartTime?: ReturnType<typeof createFirstPartTimeTracker>
+  },
+) {
+  const firstPartTime = opts.firstPartTime ?? createFirstPartTimeTracker()
+  return createTimelineCollector({ ...opts, firstPartTime })
+}
+
 describe("createTimelineCollector (event-driven)", () => {
+  test("writes ttftMs when firstPartTime tracker has entry", async () => {
+    const ttft = createFirstPartTimeTracker()
+    ttft.handlePart("a1", "text", 1500, "server")
+    const appended: LlmCallRecord[] = []
+    const c = collector({
+      config: { ...DEFAULT_TIMELINE, enabled: true },
+      getRootSessionId: () => "root1",
+      getChildIds: () => [],
+      firstPartTime: ttft,
+      append: async (_p, rec) => {
+        appended.push(rec)
+      },
+    })
+    c.handleMessage("root1", msg({ id: "a1", time: { created: 1000, completed: 3000 } }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(appended).toHaveLength(1)
+    expect(appended[0].ttftMs).toBe(500)
+    expect(appended[0].ttftSource).toBe("server")
+  })
+
   test("disabled is no-op", () => {
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: false },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -27,7 +57,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("writes complete message on handleMessage call", async () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "root1",
       getChildIds: () => [],
@@ -44,7 +74,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("skips messages for unrelated sessions", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "root1",
       getChildIds: () => ["child1"],
@@ -58,7 +88,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("skips incomplete messages when flushIncomplete is false", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -72,7 +102,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("writes child session message with correct scope", async () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "root1",
       getChildIds: () => ["child1"],
@@ -89,7 +119,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("does not deduplicate — event-driven contract", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -107,7 +137,7 @@ describe("createTimelineCollector (event-driven)", () => {
   })
 
   test("resetForRootChange clears memory but not write behavior", () => {
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -123,7 +153,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("disposed collector ignores messages", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -139,7 +169,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("respects logSummaryMessages config", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true, logSummaryMessages: false },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -155,7 +185,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("sets scope to main for root session messages", async () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "root1",
       getChildIds: () => [],
@@ -171,7 +201,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("skips user messages", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -185,7 +215,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("writes incomplete messages when flushIncomplete is true", () => {
     const appended: LlmCallRecord[] = []
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true, flushIncomplete: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -200,7 +230,7 @@ describe("createTimelineCollector (event-driven)", () => {
 
   test("append failure does not crash collector", () => {
     let called = false
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
@@ -217,7 +247,7 @@ describe("createTimelineCollector (event-driven)", () => {
   })
 
   test("memoryRecords respects maxMemoryRows", () => {
-    const c = createTimelineCollector({
+    const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true, maxMemoryRows: 2 },
       getRootSessionId: () => "r",
       getChildIds: () => [],

@@ -3,7 +3,16 @@ import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import { CacheHitSidebar } from "./widget.tsx"
 import type { DisplayConfig, TimelineConfig, CacheTTLConfig } from "./plugin-config.ts"
 import { createTimelineCollector } from "./timeline/collector.ts"
-import type { AssistantMessage, OpenCodeTuiApi, SubAgentSummary } from "./types.ts"
+import {
+  createFirstPartTimeTracker,
+  earliestPartStart,
+} from "./first-part-time.ts"
+import type {
+  AssistantMessage,
+  OpenCodeTuiApi,
+  PartUpdatedEvent,
+  SubAgentSummary,
+} from "./types.ts"
 import {
   emptySessionSnapshot,
   aggregateFromSessionObject,
@@ -17,6 +26,8 @@ import { createChildSessionSync } from "./child-session-sync.ts"
 import { loadPluginConfig } from "./load-config.ts"
 import { estimateStreamingSpeed, formatTokenSpeed } from "./token-speed.ts"
 import { computeAvgTokenSpeed } from "./token-speed.ts"
+
+const STREAM_FIELDS = new Set(["text", "reasoning"])
 
 /**
  * Session-scoped sidebar host. Bumps `refreshTick` on message.updated
@@ -47,10 +58,14 @@ export function CacheHitSidebarHost(props: {
 
   const bumpRefresh = () => setRefreshTick((v) => v + 1)
 
+  const firstPartTracker = createFirstPartTimeTracker()
+  onCleanup(() => firstPartTracker.dispose())
+
   const timeline = createTimelineCollector({
     config: props.timeline,
     getRootSessionId: () => props.sessionId,
     getChildIds: childIds,
+    firstPartTime: firstPartTracker,
   })
   onCleanup(() => timeline.dispose())
 
@@ -116,7 +131,33 @@ export function CacheHitSidebarHost(props: {
 
   const [streamingSpeed, setStreamingSpeed] = createSignal(0)
   const streamingSpeedLabel = createMemo(() => formatTokenSpeed(streamingSpeed()))
-  const firstPartTime = timeline.getFirstPartTime()
+
+  const firstPartTime = createMemo(() => {
+    void refreshTick()
+    return firstPartTracker.get()
+  })
+
+  const recordPart = (
+    messageID: string,
+    partType: string,
+    startTime: number,
+    source: "server" | "client",
+  ) => {
+    if (firstPartTracker.handlePart(messageID, partType, startTime, source)) {
+      bumpRefresh()
+    }
+  }
+
+  const seedTtftFromParts = (msg: AssistantMessage) => {
+    const msgID = msg.id ?? msg.messageID
+    const created = msg.time?.created
+    if (!msgID || typeof created !== "number" || firstPartTracker.get().has(msgID)) return
+    if (!props.api.state.part) return
+    const start = earliestPartStart(props.api.state.part(msgID), created)
+    if (start !== undefined) {
+      recordPart(msgID, "text", start, "server")
+    }
+  }
 
   const trackStreaming = () => {
     const msgs = mainMessages()
@@ -161,6 +202,7 @@ export function CacheHitSidebarHost(props: {
     void props.api.state.path.directory
     childSync.resetForParentChange()
     timeline.resetForRootChange()
+    firstPartTracker.reset()
     if (sid) {
       childSync.loadChildren()
     }
@@ -169,10 +211,14 @@ export function CacheHitSidebarHost(props: {
   createEffect(() => {
     const unsub = props.api.event.on("message.updated", (event) => {
       bumpRefresh()
-      const sid = event.properties?.info?.sessionID
+      const msg = event.properties?.info as (AssistantMessage & { sessionID?: string }) | undefined
+      const sid = msg?.sessionID
       childSync.onForeignSessionActivity(sid)
-      if (sid && event.properties?.info) {
-        timeline.handleMessage(sid, event.properties.info as AssistantMessage)
+      if (msg?.role === "assistant") {
+        seedTtftFromParts(msg)
+      }
+      if (sid && msg) {
+        timeline.handleMessage(sid, msg)
       }
     })
     onCleanup(() => unsub?.())
@@ -181,18 +227,20 @@ export function CacheHitSidebarHost(props: {
   createEffect(() => {
     const unsub1 = props.api.event.on("message.part.updated", (event) => {
       const part = (event as PartUpdatedEvent).properties?.part
-      console.log("[cache-hit] message.part.updated", { part })
-      if (part?.type === "text" && part?.time?.start && part?.messageID) {
-        console.log("[cache-hit] handlePart server", part.messageID, part.time.start)
-        timeline.handlePart(part.messageID, part.type, part.time.start, "server")
+      if (
+        part?.messageID &&
+        STREAM_FIELDS.has(part.type) &&
+        typeof part.time?.start === "number"
+      ) {
+        recordPart(part.messageID, part.type, part.time.start, "server")
       }
     })
     const unsub2 = props.api.event.on("message.part.delta", (event) => {
-      const eventProps = event.properties as { messageID?: string; partID?: string; field?: string } | undefined
-      console.log("[cache-hit] message.part.delta", { eventProps })
-      if (eventProps?.field === "text" && eventProps?.messageID) {
-        console.log("[cache-hit] handlePart client", eventProps.messageID)
-        timeline.handlePart(eventProps.messageID, "text", Date.now(), "client")
+      const eventProps = event.properties as
+        | { messageID?: string; partID?: string; field?: string }
+        | undefined
+      if (eventProps?.messageID && eventProps.field && STREAM_FIELDS.has(eventProps.field)) {
+        recordPart(eventProps.messageID, eventProps.field, Date.now(), "client")
       }
     })
     onCleanup(() => {

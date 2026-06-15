@@ -34,7 +34,8 @@ Extend "Agents" section with per-child speed rows.
 |------|--------|
 | `src/token-speed.ts` | **New** — speed calculation functions |
 | `src/sparkline.ts` | **New** — sparkline rendering |
-| `src/use-cache-hit-metrics.ts` | New reactive signals |
+| `src/first-part-time.ts` | TTFT tracker (sidebar + timeline) |
+| `src/use-cache-hit-metrics.ts` | Speed + TTFT memos |
 | `src/main-session-view.tsx` | Speed section UI |
 | `src/sidebar-host.tsx` | Streaming tracking, sub-agent speed |
 | `src/agents-view.tsx` | Speed row per sub-agent |
@@ -81,6 +82,7 @@ Placement: between **Detail** and **Model** sections.
 │   Last: 48 tok/s                         │
 │   Avg:  42 tok/s                         │
 │   Trend: ▁▃▅▇▆▄▂                        │
+│   TTFT: 944ms                            │  ← last completed call (or "—")
 │                                          │
 │ ▼ Model                                  │
 │   Cost: $0.20                            │

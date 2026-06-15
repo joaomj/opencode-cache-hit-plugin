@@ -64,18 +64,24 @@ export type LlmCallRecord = {
 
 **`ttftMs` null handling**
 
-`ttftMs` is often `null` because OpenCode's `TextPart.time` is optional. When `part.time.start` is not provided by the SDK, TTFT cannot be calculated. This is expected behavior — not all providers/models set this field.
+`ttftMs` may be absent when no first-part timestamp was captured for that message. Sidebar **TTFT** uses the same tracker and works **without** `timeline.enabled`; JSONL only includes `ttftMs` when timeline logging is on.
+
+Capture order (see [ttft-hybrid.md](./ttft-hybrid.md)):
+
+1. `message.part.updated` — `part.time.start` on `text` / `reasoning` (server)
+2. `message.part.delta` — `Date.now()` on first `text` / `reasoning` delta (client)
+3. `message.updated` — scan `api.state.part()` for the earliest valid `time.start` if still missing
+
+When all sources fail (e.g. local models with no parts), `ttftMs` is omitted — expected for some providers.
 
 **`ttftSource` (TTFT data source)**
 
-The plugin uses a hybrid approach to maximize TTFT availability:
-
 | Source | Description | Reliability |
 |--------|-------------|-------------|
-| `"server"` | From `part.time.start` in `message.part.updated` event | ✅ Most accurate (excludes network latency) |
-| `"client"` | From `Date.now()` on first `message.part.delta` event | ✅ Always available (includes network latency) |
+| `"server"` | `part.time.start` from part events or `api.state.part()` scan | ✅ Most accurate (excludes network latency) |
+| `"client"` | `Date.now()` on first `message.part.delta` | ✅ When BusEvents are delivered |
 
-**Priority logic**: Server TTFT is preferred. Client TTFT is used as fallback when server timing is unavailable (e.g., provider doesn't set `part.time.start`, or SDK bug #21544 where `text-end` overwrote `time.start`).
+**Priority logic**: Server timing is preferred; client replaces nothing once server is set. Invalid timestamps (`start <= created`) are dropped.
 
 **`messageKey` (dedupe)**
 
@@ -249,8 +255,9 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 | Module | Role |
 |--------|------|
 | `message-timing.ts` | `created` / `completed` |
+| `first-part-time.ts` | TTFT tracker (sidebar + JSONL input) |
 | `stats.ts` | shared per-message hit % |
-| `sidebar-host.tsx` | `createTimelineCollector` |
+| `sidebar-host.tsx` | `createFirstPartTimeTracker`, `createTimelineCollector` |
 | `plugin.tsx` | reads config |
 
 ## Tests
@@ -258,6 +265,7 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 | Case | File |
 |------|------|
 | `buildCallRecords` | `tests/timeline-records.test.ts` |
+| first-part tracker | `tests/first-part-time.test.ts` |
 | writer / rotation / purge | `tests/timeline-writer.test.ts`, `timeline-rotation.test.ts` |
 | collector | `tests/timeline-collector.test.ts` |
 

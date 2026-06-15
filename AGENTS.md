@@ -17,6 +17,7 @@ OpenCode TUI sidebar plugin: **cache hit rate**, **tokens**, **cost**, with **su
 | Timeline / JSONL | [docs/en/timeline.md](docs/en/timeline.md) | [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md) |
 | Token Speed | [docs/en/token-speed.md](docs/en/token-speed.md) | [docs/zh-CN/token-speed.md](docs/zh-CN/token-speed.md) |
 | TTFT Hybrid | [docs/en/ttft-hybrid.md](docs/en/ttft-hybrid.md) | [docs/zh-CN/ttft-hybrid.md](docs/zh-CN/ttft-hybrid.md) |
+| TTFT Troubleshooting | [docs/en/ttft-troubleshooting.md](docs/en/ttft-troubleshooting.md) | [docs/zh-CN/ttft-troubleshooting.md](docs/zh-CN/ttft-troubleshooting.md) |
 | TUI panel | [src/tui-panel/README.md](src/tui-panel/README.md) | [src/tui-panel/README.zh-CN.md](src/tui-panel/README.zh-CN.md) |
 | Migration plan | [docs/en/frontend-migration-plan.md](docs/en/frontend-migration-plan.md) | [docs/zh-CN/frontend-migration-plan.md](docs/zh-CN/frontend-migration-plan.md) |
 | Contributing / npm | [CONTRIBUTING.md](CONTRIBUTING.md) | — |
@@ -34,7 +35,7 @@ After moving or renaming exports: run full `bun test`; `tests/module-load.test.t
 ## Code conventions
 
 - **Minimal diffs**; match existing naming and module boundaries.
-- **Pure logic** in `stats.ts`, `timeline/`, `format-*.ts`, `format-model.ts`, `tui-panel/layout.ts` — avoid pulling JSX into modules used by tests (import `layout.ts` / `palette.ts` directly, not `tui-panel/index.ts` when possible).
+- **Pure logic** in `stats.ts`, `first-part-time.ts`, `timeline/`, `format-*.ts`, `format-model.ts`, `tui-panel/layout.ts` — avoid pulling JSX into modules used by tests (import `layout.ts` / `palette.ts` directly, not `tui-panel/index.ts` when possible).
 - **Sub-agent row UI**: `format-model.ts` + `agents-view.tsx`; behavior in design doc § Sub-agent row display / 子 session 行展示.
 - **`PLUGIN_ROOT`** in `load-config.ts` is `fileURLToPath(new URL("..", import.meta.url))` — do **not** wrap with an extra `dirname` (breaks config path).
 - **Sub-agent ids**: only from `session.list` overwrite in `child-session-sync.ts`; do not append via `session.get`.
