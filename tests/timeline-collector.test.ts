@@ -1,7 +1,8 @@
 import { describe, test, expect } from "bun:test"
 import { createFirstPartTimeTracker } from "../src/first-part-time.ts"
+import { createToolTimingTracker } from "../src/tool-timing.ts"
 import { createTimelineCollector } from "../src/timeline/collector.ts"
-import { DEFAULT_TIMELINE } from "../src/plugin-config.ts"
+import { DEFAULT_TIMELINE, type TimelineConfig } from "../src/plugin-config.ts"
 import type { AssistantMessage } from "../src/types.ts"
 import type { LlmCallRecord } from "../src/timeline/types.ts"
 
@@ -16,15 +17,83 @@ function msg(overrides: Partial<AssistantMessage> = {}): AssistantMessage {
 }
 
 function collector(
-  opts: Omit<Parameters<typeof createTimelineCollector>[0], "firstPartTime"> & {
+  opts: Omit<Parameters<typeof createTimelineCollector>[0], "firstPartTime" | "toolTiming" | "getConfig"> & {
+    config?: TimelineConfig
+    getConfig?: () => TimelineConfig
     firstPartTime?: ReturnType<typeof createFirstPartTimeTracker>
+    toolTiming?: ReturnType<typeof createToolTimingTracker>
   },
 ) {
   const firstPartTime = opts.firstPartTime ?? createFirstPartTimeTracker()
-  return createTimelineCollector({ ...opts, firstPartTime })
+  const toolTiming = opts.toolTiming ?? createToolTimingTracker()
+  const getConfig = opts.getConfig ?? (() => opts.config ?? DEFAULT_TIMELINE)
+  const { config: _config, getConfig: _getConfig, ...rest } = opts
+  return createTimelineCollector({ ...rest, getConfig, firstPartTime, toolTiming })
 }
 
 describe("createTimelineCollector (event-driven)", () => {
+  test("writes toolDurations when toolTiming tracker has entries", async () => {
+    const toolTiming = createToolTimingTracker()
+    toolTiming.handleToolPart("a1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "running", input: { command: "ls -la" }, time: { start: 1000 } },
+    })
+    toolTiming.handleToolPart("a1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "completed", time: { start: 1000, end: 1150 } },
+    })
+    const appended: LlmCallRecord[] = []
+    const c = collector({
+      config: { ...DEFAULT_TIMELINE, enabled: true },
+      getRootSessionId: () => "root1",
+      getChildIds: () => [],
+      toolTiming,
+      append: async (_p, rec) => {
+        appended.push(rec)
+      },
+    })
+    c.handleMessage("root1", msg({ id: "a1", time: { created: 1700000000000, completed: 1700000003000 } }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(appended).toHaveLength(1)
+    expect(appended[0].toolDurations).toEqual([
+      { tool: "bash", summary: "ls -la", durationMs: 150 },
+    ])
+  })
+
+  test("omits toolDurations when config.toolDurations is false", async () => {
+    const toolTiming = createToolTimingTracker()
+    toolTiming.handleToolPart("a1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "running", input: { command: "ls -la" }, time: { start: 1000 } },
+    })
+    toolTiming.handleToolPart("a1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "completed", time: { start: 1000, end: 1150 } },
+    })
+    const appended: LlmCallRecord[] = []
+    const c = collector({
+      config: { ...DEFAULT_TIMELINE, enabled: true, toolDurations: false },
+      getRootSessionId: () => "root1",
+      getChildIds: () => [],
+      toolTiming,
+      append: async (_p, rec) => {
+        appended.push(rec)
+      },
+    })
+    c.handleMessage("root1", msg({ id: "a1", time: { created: 1700000000000, completed: 1700000003000 } }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(appended).toHaveLength(1)
+    expect(appended[0].toolDurations).toBeUndefined()
+  })
+
   test("writes ttftMs when firstPartTime tracker has entry", async () => {
     const ttft = createFirstPartTimeTracker()
     ttft.handlePart("a1", "text", 1700000000500, "sdk")

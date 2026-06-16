@@ -17,7 +17,8 @@
     "rotateMaxBytes": 16777216,
     "retainRotated": 5,
     "maxAgeDays": 30,
-    "maxLogFiles": 20
+    "maxLogFiles": 20,
+    "toolDurations": true
   },
   "cacheTTL": {
     "enabled": true,

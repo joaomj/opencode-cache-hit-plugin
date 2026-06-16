@@ -128,7 +128,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 ### 时间轴日志（`timeline`，默认关闭）
 
-每 assistant 轮次 → JSONL。详见 [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md)。
+每 assistant 轮次 → JSONL（tokens、cache、cost、TTFT，可选各工具 `toolDurations`）。详见 [docs/zh-CN/timeline.md](docs/zh-CN/timeline.md)。
 
 ```json
 "timeline": {
@@ -137,13 +137,15 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
   "rotateMaxBytes": 16777216,
   "retainRotated": 5,
   "maxAgeDays": 30,
-  "maxLogFiles": 20
+  "maxLogFiles": 20,
+  "toolDurations": true
 }
 ```
 
 | 字段 | 默认 | 含义 |
 |-------|---------|-------|
 | `enabled` | `false` | 总开关 |
+| `toolDurations` | `true` | JSONL 记录各工具耗时（`tool`、`summary?`、`durationMs`）；设为 `false` 则不写入 |
 | `dir` | `""` | `logs/timeline-YYYY-MM-DD.jsonl`（插件根目录下） |
 | `rotateMaxBytes` | `0` | 同日大小轮转至 `.jsonl.1` |
 | `retainRotated` | `5` | 每日保留的轮转备份数 |

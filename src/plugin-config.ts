@@ -37,6 +37,8 @@ export type TimelineConfig = {
   maxAgeDays: number
   /** 0 = unlimited; max number of `*.jsonl*` files in log dir (oldest mtime deleted first) */
   maxLogFiles: number
+  /** Record per-tool execution durations in JSONL. Default true. */
+  toolDurations: boolean
 }
 
 export const DEFAULT_TIMELINE: TimelineConfig = {
@@ -50,6 +52,7 @@ export const DEFAULT_TIMELINE: TimelineConfig = {
   retainRotated: 5,
   maxAgeDays: 0,
   maxLogFiles: 0,
+  toolDurations: true,
 }
 
 export type CacheTTLConfig = {
@@ -103,6 +106,7 @@ export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
   if (typeof o.maxLogFiles === "number" && o.maxLogFiles >= 0) {
     t.maxLogFiles = Math.floor(o.maxLogFiles)
   }
+  if (typeof o.toolDurations === "boolean") t.toolDurations = o.toolDurations
   return t
 }
 

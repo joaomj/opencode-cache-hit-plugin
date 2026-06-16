@@ -2,6 +2,7 @@ import { generationDurationMs, timingFromAssistantMessage } from "../message-tim
 import { perMessageHitPercent } from "../stats.ts"
 import type { AssistantMessage } from "../types.ts"
 import type { LlmCallRecord } from "./types.ts"
+import type { ToolDurationRecord } from "../tool-timing.ts"
 
 /** Convert milliseconds timestamp to ISO 8601 with local timezone offset. */
 export function msToISOString(ms: number): string {
@@ -33,6 +34,7 @@ export function assistantMessageToRecord(
   recordedAt: number,
   firstPartTime?: number,
   ttftSource?: "sdk" | "tui",
+  toolDurations?: ToolDurationRecord[],
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
@@ -71,6 +73,7 @@ export function assistantMessageToRecord(
     ttftSource,
     tps,
     finish: msg.finish,
+    toolDurations,
   }
 }
 

@@ -8,6 +8,7 @@ import {
   earliestPartStart,
   STREAM_PART_TYPES,
 } from "./first-part-time.ts"
+import { createToolTimingTracker, type ToolPartEventData } from "./tool-timing.ts"
 import { isPartUpdatedEvent } from "./types.ts"
 import type {
   AssistantMessage,
@@ -64,17 +65,22 @@ export function CacheHitSidebarHost(props: {
   })
   const display = createMemo(() => runtimeConfig().display)
   const cacheTTL = createMemo(() => runtimeConfig().cacheTTL)
+  const timelineConfig = createMemo(() => runtimeConfig().timeline)
 
   const bumpRefresh = () => setRefreshTick((v) => v + 1)
 
   const firstPartTracker = createFirstPartTimeTracker()
   onCleanup(() => firstPartTracker.dispose())
 
+  const toolTiming = createToolTimingTracker()
+  onCleanup(() => toolTiming.dispose())
+
   const timeline = createTimelineCollector({
-    config: props.timeline,
+    getConfig: () => timelineConfig(),
     getRootSessionId: () => props.sessionId,
     getChildIds: childIds,
     firstPartTime: firstPartTracker,
+    toolTiming,
   })
   onCleanup(() => timeline.dispose())
 
@@ -205,6 +211,7 @@ export function CacheHitSidebarHost(props: {
     childSync.resetForParentChange()
     timeline.resetForRootChange()
     firstPartTracker.reset()
+    toolTiming.reset()
     streamingTickState = initialStreamingTickState()
     setStreamingNow({ phase: "idle", speed: 0 })
     if (sid) {
@@ -245,6 +252,9 @@ export function CacheHitSidebarHost(props: {
       if (part.type === "tool" && !part.time?.start && part.state?.status === "pending") {
         const recorded = recordPart(part.messageID, "tool", Date.now(), "tui")
         if (recorded) trackStreaming()
+      }
+      if (part.type === "tool" && timelineConfig().toolDurations) {
+        toolTiming.handleToolPart(part.messageID, part as ToolPartEventData)
       }
     })
     const unsub2 = props.api.event.on("message.part.delta", (event) => {

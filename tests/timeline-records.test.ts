@@ -120,10 +120,39 @@ describe("assistantMessageToRecord", () => {
       time: { created: 1000, completed: 3000 },
       tokens: { input: 10, output: 20 },
     }
-    // firstPartTime (500) is before created (1000) - should not produce negative TTFT
     const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 500)
     expect(rec).not.toBeNull()
     expect(rec!.ttftMs).toBeUndefined()
     expect(rec!.tps).toBe(10)
+  })
+
+  test("includes toolDurations when provided", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 3000 },
+      tokens: { input: 10, output: 20 },
+    }
+    const toolDurations = [
+      { tool: "bash", summary: "list files", durationMs: 150 },
+      { tool: "read", summary: "/home/user/app.ts", durationMs: 12 },
+    ]
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, undefined, undefined, toolDurations)
+    expect(rec).not.toBeNull()
+    expect(rec!.toolDurations).toEqual(toolDurations)
+  })
+
+  test("toolDurations undefined when not provided", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 3000 },
+      tokens: { input: 10, output: 20 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000)
+    expect(rec).not.toBeNull()
+    expect(rec!.toolDurations).toBeUndefined()
   })
 })

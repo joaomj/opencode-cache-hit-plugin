@@ -65,8 +65,42 @@ export type LlmCallRecord = {
   ttftSource?: "sdk" | "tui"  // TTFT 数据来源
   tps?: number             // 每秒 Token 数（output / genTime * 1000）
   finish?: string          // 完成原因（如 "stop", "tool-calls", "error"）
+  toolDurations?: ToolDurationRecord[]  // 来自 src/tool-timing.ts
 }
 ```
+
+**`toolDurations`（各工具执行耗时）**
+
+可选数组，记录该 assistant 轮次内已完成的 tool 调用。每个 tool 调用归属于触发它的 assistant 消息（按 `messageID` 匹配）。单条 assistant 消息可能触发多个 tool 调用（并行或串行），均记录在同一 `toolDurations` 数组中。
+
+来自 `message.part.updated` 中 tool part 的 `running → completed` 或 `running → error` 转换。当 `timeline.toolDurations` 为 `false`、timeline 未开启、本轮无 tool、或 part 事件丢失时省略（与 TTFT 不同，**无** `api.state.part()` 回填）。
+
+| 字段 | 说明 |
+|------|------|
+| `tool` | 工具名（如 `bash`、`read`、`grep`） |
+| `summary?` | 隐私安全的摘要提示（见下表） |
+| `durationMs` | part `state.time.start` 到 `state.time.end` 的墙钟耗时（优先 SDK 时间戳） |
+
+**`summary` 提取规则**（已截断保护隐私；完整数据在 OpenCode sessions DB 中）：
+
+| 工具 | 来源 | 示例 |
+|------|------|------|
+| `bash` | `command`（最长 60 字符） | `git add scripts/... && git commit --ame...` |
+| `read`/`write`/`edit` | `filePath` 仅文件名 | `timeline-dashboard.ts` |
+| `grep`/`glob` | `pattern`（最长 60 字符） | `TODO.*fix` |
+| `webfetch` | hostname + pathname（去掉 query，最长 80 字符） | `example.com/api/data` |
+| `task` | `description`（最长 60 字符） | `Find auth implementations` |
+| `websearch` | `query`（最长 60 字符） | `OpenCode plugin API` |
+| `lsp_*` | `filePath` 仅文件名（`lsp_diagnostics`、`lsp_symbols` 等） | `main.ts` |
+| `question` | 首项 `header`，否则 `question`（最长 60 字符） | `Choose color` |
+
+其他工具：仅写 `tool` 名；无 `summary`。
+
+仅包含已到 `completed` 或 `error` 的工具；仍在 `running` 的不写入。若漏收 `running` 事件，会用终态事件上的 `state.time.start` 作为起点。若无法确定有效起点，该工具不会写入 `toolDurations`（避免错误时长）。
+
+**内存 tracker（`toolTiming`）**
+
+`src/tool-timing.ts` 按 `messageID` 维护 `Map<messageID, ToolTimingEntry[]>`，生命周期与当前主 session 绑定。JSONL 落盘后 **不会** 逐条清理（与 `firstPartTime` 相同）。内存随 assistant 轮次 × 每轮 tool 数增长，极长 session 通常为 KB 到低 MB 量级，不属于 GC 意义上的泄漏。切换主 session 时 `sidebar-host` 调用 `toolTiming.reset()`，插件卸载时 `dispose()` 清空。`timeline.toolDurations` 为 `false` 时 `sidebar-host` 不订阅 part 追踪。v1 不在 session 内做上限或逐条淘汰。
 
 **`ttftMs` null 处理**
 
@@ -105,7 +139,7 @@ export type LlmCallRecord = {
 
 1. `message.updated` 携带一条 assistant `Message`。
 2. `handleMessage(sessionID, msg)` 判定 scope（`sessionID === root` 为 `main`，在 `childIds` 内为 `child`）。
-3. `src/timeline/records.ts` 的 `assistantMessageToRecord()` 生成一条 `LlmCallRecord`（TTFT 从注入的 `firstPartTime` tracker 读取）。
+3. `src/timeline/records.ts` 的 `assistantMessageToRecord()` 生成一条 `LlmCallRecord`（TTFT 来自 `firstPartTime`，工具耗时来自 `toolTiming`）。
 4. `timeline.enabled` 且满足 flush 规则 → append 一行 JSONL。
 
 记录规则（`assistantMessageToRecord`）：
@@ -147,7 +181,8 @@ export type LlmCallRecord = {
     "rotateMaxBytes": 16777216,
     "retainRotated": 5,
     "maxAgeDays": 30,
-    "maxLogFiles": 20
+    "maxLogFiles": 20,
+    "toolDurations": true
   }
 }
 ```
@@ -166,6 +201,7 @@ export type LlmCallRecord = {
 | `retainRotated` | `5` | 同日大小轮转保留的**备份**个数（不含正在写的活跃文件） |
 | `maxAgeDays` | `0` | collector **启动时**删除超 N 天的 `timeline-*.jsonl*` |
 | `maxLogFiles` | `0` | 日志目录内 `timeline-*.jsonl*` 总数上限（每个 `.1` 单独计数） |
+| `toolDurations` | `true` | 记录各工具执行耗时（见上方 `toolDurations` 说明） |
 
 **写入流程**（`src/timeline/writer.ts` + `rotation.ts`）
 
@@ -215,7 +251,7 @@ export type LlmCallRecord = {
 ### 收集
 
 - `message.updated` 事件携带完整 `Message` 对象。collector 直接订阅事件——无轮询，无去重。
-- 切换主 session：`resetForRootChange()` 清空内存缓存；新 session 的事件自然到达。
+- 切换主 session：`resetForRootChange()` 清空 collector 内存；`sidebar-host` 同时 `firstPartTime` / `toolTiming` reset；新 session 的事件自然到达。**`timeline` 配置**（含 `enabled`、`toolDurations`、`dir`）在切换主 session 时从 `cache-hit.json` 重读，与 `display` / `cacheTTL` 相同；同 session 内改配置且不切换 session 时需重载插件才生效。
 - 重启安全：启动前的消息已在上次 session 中写入 JSONL。无需回放，无需扫描。
 
 ## 运行时接入

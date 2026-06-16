@@ -1,4 +1,5 @@
 import type { FirstPartTimeTracker } from "../first-part-time.ts"
+import type { ToolTimingTracker } from "../tool-timing.ts"
 import type { TimelineConfig } from "../plugin-config.ts"
 import type { AssistantMessage } from "../types.ts"
 import { assistantMessageToRecord } from "./records.ts"
@@ -20,43 +21,27 @@ export type TimelineCollector = {
 }
 
 export function createTimelineCollector(opts: {
-  config: TimelineConfig
+  getConfig: () => TimelineConfig
   getRootSessionId: () => string
   getChildIds: () => readonly string[]
   firstPartTime: FirstPartTimeTracker
+  toolTiming: ToolTimingTracker
   /** Test hook: replace disk append */
-  append?: (logPath: string, record: LlmCallRecord) => Promise<void>
+  append?: (logPath: string, record: LlmCallRecord, config: TimelineConfig) => Promise<void>
 }): TimelineCollector {
   const ttft = opts.firstPartTime
-
-  if (!opts.config.enabled) {
-    return {
-      handleMessage: () => {},
-      resetForRootChange: () => {},
-      dispose: () => {},
-      memoryRecords: () => [],
-    }
-  }
-
-  const logsDir = resolveTimelineDir(opts.config)
-  const rotation = {
-    maxLinesPerFile: opts.config.maxLinesPerFile,
-    rotateMaxBytes: opts.config.rotateMaxBytes,
-    retainRotated: opts.config.retainRotated,
-  }
-  const append =
-    opts.append ??
-    ((path, rec) => appendTimelineRecord(path, rec, rotation))
-  if (opts.config.maxAgeDays > 0 || opts.config.maxLogFiles > 0) {
-    void purgeTimelineLogDir(logsDir, {
-      maxAgeDays: opts.config.maxAgeDays,
-      maxLogFiles: opts.config.maxLogFiles,
-    })
-  }
+  const toolTiming = opts.toolTiming
+  const defaultAppend = opts.append ?? ((path: string, record: LlmCallRecord, cfg: TimelineConfig) =>
+    appendTimelineRecord(path, record, {
+      maxLinesPerFile: cfg.maxLinesPerFile,
+      rotateMaxBytes: cfg.rotateMaxBytes,
+      retainRotated: cfg.retainRotated,
+    }))
 
   let activeDateKey = localDateKey()
   let memory: LlmCallRecord[] = []
   let disposed = false
+  let purgeDone = false
 
   const ensureDateKey = () => {
     const today = localDateKey()
@@ -66,8 +51,21 @@ export function createTimelineCollector(opts: {
     return today
   }
 
+  const maybePurge = (config: TimelineConfig) => {
+    if (purgeDone) return
+    if (config.maxAgeDays <= 0 && config.maxLogFiles <= 0) return
+    purgeDone = true
+    void purgeTimelineLogDir(resolveTimelineDir(config), {
+      maxAgeDays: config.maxAgeDays,
+      maxLogFiles: config.maxLogFiles,
+    })
+  }
+
   const handleMessage = (sessionID: string, msg: AssistantMessage) => {
     if (disposed) return
+    const config = opts.getConfig()
+    if (!config.enabled) return
+
     const rootId = opts.getRootSessionId()
     if (!rootId) return
 
@@ -81,7 +79,9 @@ export function createTimelineCollector(opts: {
     }
 
     if (msg.role !== "assistant") return
-    if (!opts.config.logSummaryMessages && msg.summary === true) return
+    if (!config.logSummaryMessages && msg.summary === true) return
+
+    maybePurge(config)
 
     const msgID = msg.id ?? msg.messageID ?? ""
     const rec = assistantMessageToRecord(
@@ -92,17 +92,19 @@ export function createTimelineCollector(opts: {
       Date.now(),
       ttft.get().get(msgID),
       ttft.getSource(msgID),
+      config.toolDurations ? toolTiming.getDurations(msgID) : undefined,
     )
     if (!rec) return
-    if (!opts.config.flushIncomplete && !rec.isComplete) return
+    if (!config.flushIncomplete && !rec.isComplete) return
     // Skip records with invalid timestamps (e.g. uninitialised epoch 1970)
     if (rec.created.startsWith("1970")) return
 
+    const logsDir = resolveTimelineDir(config)
     const logPath = timelineDailyLogPath(logsDir, ensureDateKey())
-    void append(logPath, rec).catch(() => {})
+    void defaultAppend(logPath, rec, config).catch(() => {})
 
     memory.push(rec)
-    const max = opts.config.maxMemoryRows
+    const max = config.maxMemoryRows
     while (memory.length > max) memory.shift()
   }
 
@@ -116,7 +118,7 @@ export function createTimelineCollector(opts: {
       memory = []
     },
     memoryRecords: () => {
-      const max = opts.config.maxMemoryRows
+      const max = opts.getConfig().maxMemoryRows
       if (memory.length <= max) return memory
       return memory.slice(-max)
     },

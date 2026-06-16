@@ -217,6 +217,7 @@ tr:hover td{background:#1c2128}
 .dg-item{display:flex;flex-direction:column;min-width:0}
 .dg-label{font-size:11px;color:#8b949e;margin-bottom:2px}
 .dg-value{font-size:13px;color:#e6edf3;font-family:"SF Mono",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dg-value pre{white-space:pre-wrap;word-break:break-all;margin:0}
 .tip-box{position:fixed;max-width:360px;padding:8px 12px;background:#1c2128;border:1px solid #30363d;border-radius:6px;font-size:12px;line-height:1.5;color:#e6edf3;pointer-events:none;z-index:999;display:none;box-shadow:0 4px 12px rgba(0,0,0,.4)}
 </style>
 </head>
@@ -302,7 +303,7 @@ tr:hover td{background:#1c2128}
 
 <script>
 var RAW_DATA = TMPL_DATA
-var EXPAND_FIELDS = ["schema","recordedAt","sessionId","rootSessionId","scope","messageKey","modelId","created","completedAt","durationMs","isComplete","input","output","reasoning","cacheRead","cacheWrite","cost","hitPercent","skippedForHit","ttftMs","ttftSource","tps","finish"]
+var EXPAND_FIELDS = ["schema","recordedAt","sessionId","rootSessionId","scope","messageKey","modelId","created","completedAt","durationMs","isComplete","input","output","reasoning","cacheRead","cacheWrite","cost","hitPercent","skippedForHit","ttftMs","ttftSource","tps","finish","toolDurations"]
 
 function fmtTtft(ms) { if (ms == null) return "-"; return ms < 1000 ? ms + "ms" : (ms / 1000).toFixed(1) + "s" }
 function fmtTps(v) { if (v == null) return "-"; return Math.round(v) + " tok/s" }
@@ -581,6 +582,10 @@ function expandDetailGrid(r) {
       if (COST_DISPLAY.rate !== 1) v += " (" + fmtCost(rawCost) + ")"
     }
     else if (typeof v === "boolean") v = v ? "true" : "false"
+    else if (Array.isArray(v)) {
+      var json = JSON.stringify(v, null, 2)
+      return '<div class="dg-item"><span class="dg-label">'+f+'</span><span class="dg-value"><pre>'+esc(json)+'</pre></span></div>'
+    }
     else v = String(v)
     return '<div class="dg-item"><span class="dg-label">'+f+'</span><span class="dg-value" title="'+esc(v)+'">'+esc(v)+'</span></div>'
   }).join("")

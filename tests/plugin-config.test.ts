@@ -31,12 +31,18 @@ describe("normalizeTimelineConfig", () => {
     const t = normalizeTimelineConfig(null)
     expect(t.enabled).toBe(false)
     expect(t.maxMemoryRows).toBe(50)
+    expect(t.toolDurations).toBe(true)
   })
 
   test("parses enabled", () => {
     const t = normalizeTimelineConfig({ enabled: true, dir: "/tmp/logs" })
     expect(t.enabled).toBe(true)
     expect(t.dir).toBe("/tmp/logs")
+  })
+
+  test("parses toolDurations flag", () => {
+    expect(normalizeTimelineConfig({ toolDurations: false }).toolDurations).toBe(false)
+    expect(normalizeTimelineConfig({ toolDurations: true }).toolDurations).toBe(true)
   })
 })
 
