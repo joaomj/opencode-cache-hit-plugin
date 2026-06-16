@@ -2,7 +2,7 @@
 import { Show, createMemo } from "solid-js"
 import { TokenDetailRows } from "./cache-hit-rows.tsx"
 import { CacheTTLView } from "./cache-ttl-view.tsx"
-import { formatStreamingNowDisplay, type StreamingPhase } from "./token-speed.ts"
+import { formatStreamingNowDisplay, type StreamingPhase } from "./streaming-state.ts"
 import type { CacheHitMetrics } from "./use-cache-hit-metrics.ts"
 import type { CacheTTLConfig } from "./plugin-config.ts"
 import type { AssistantMessage } from "./types.ts"

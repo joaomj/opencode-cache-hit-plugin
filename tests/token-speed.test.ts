@@ -4,11 +4,13 @@ import {
   computeAvgTokenSpeed,
   formatTokenSpeed,
   estimateStreamingSpeed,
+} from "../src/token-speed.ts"
+import {
   advanceStreamingNow,
   formatStreamingNowDisplay,
   initialStreamingTickState,
   STREAMING_HOLD_MS,
-} from "../src/token-speed.ts"
+} from "../src/streaming-state.ts"
 
 describe("computeTokenSpeed", () => {
   test("returns 0 for duration < 500ms", () => {

@@ -61,14 +61,22 @@ export type StreamPart = {
   time?: { start?: number }
 }
 
-export type PartUpdatedEvent = {
-  properties?: {
-    part?: {
-      type: string
-      messageID: string
-      time?: { start?: number }
-    }
-  }
+export type PartUpdatedPart = {
+  type: string
+  messageID: string
+  time?: { start?: number }
+}
+
+export function isPartUpdatedEvent(
+  event: { properties?: Record<string, unknown> },
+): event is { properties: { part: PartUpdatedPart } } {
+  const p = event.properties?.part
+  return (
+    typeof p === "object" &&
+    p !== null &&
+    typeof (p as Record<string, unknown>).type === "string" &&
+    typeof (p as Record<string, unknown>).messageID === "string"
+  )
 }
 
 /** Session aggregate from `api.state.session.get()` — DB-level totals, not capped by message limit. */
@@ -90,7 +98,7 @@ export type OpenCodeTuiApi = {
     provider: ReadonlyArray<ProviderInfo>
     session: {
       messages: (id: string) => unknown[] | undefined
-      get: (id: string) => SessionObject | undefined
+      get?: (id: string) => SessionObject | undefined
     }
     part: (messageID: string) => ReadonlyArray<StreamPart> | undefined
   }

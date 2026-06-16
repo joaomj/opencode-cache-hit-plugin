@@ -40,8 +40,8 @@ Default output: `/tmp/timeline-dashboard-YYYY-MM-DD-HHmmss.html` (timestamp suff
 - Summary cards follow active filters (records, tokens, cost, avg hit rate)
 - Time / session / scope / model / text search filters
 - 3 Chart.js charts: token volume (stacked bar), hit rate + cost (dual axis), duration (bar)
-- Session summary table (mixed main+child scope shown as `main+child`)
-- Per-call detail table with expandable rows (all JSONL fields)
+- Session summary table (mixed main+child scope shown as `main+child`), with `Avg TTFT` and `Avg TPS` columns
+- Per-call detail table with expandable rows (all JSONL fields), `TTFT` and `TPS` columns
 - Embedded data — no server needed, just open the HTML file
 
 **How it works:**

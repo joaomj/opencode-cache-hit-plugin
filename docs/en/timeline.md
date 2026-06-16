@@ -55,7 +55,7 @@ export type LlmCallRecord = {
   hitPercent: number | null
   skippedForHit: boolean   // compaction / summary
   ttftMs?: number          // Time To First Token (firstPartTime - created)
-  ttftSource?: "server" | "client"  // TTFT data source
+  ttftSource?: "sdk" | "tui"  // TTFT data source
   tps?: number             // Tokens Per Second (output / genTime * 1000)
   finish?: string          // Finish reason (e.g., "stop", "tool-calls", "error")
 }
@@ -67,8 +67,8 @@ export type LlmCallRecord = {
 
 Capture order (see [ttft-hybrid.md](./ttft-hybrid.md)):
 
-1. `message.part.updated` — `part.time.start` on `text` / `reasoning` (server)
-2. `message.part.delta` — `Date.now()` on first `text` / `reasoning` delta (client)
+1. `message.part.updated` — `part.time.start` on `text` / `reasoning` (sdk)
+2. `message.part.delta` — `Date.now()` on first `text` / `reasoning` delta (tui)
 3. `message.updated` — scan `api.state.part()` for the earliest valid `time.start` if still missing
 
 When all sources fail (e.g. local models with no parts), `ttftMs` is omitted — expected for some providers.
@@ -77,10 +77,10 @@ When all sources fail (e.g. local models with no parts), `ttftMs` is omitted —
 
 | Source | Description | Reliability |
 |--------|-------------|-------------|
-| `"server"` | `part.time.start` from part events or `api.state.part()` scan | ✅ Most accurate (excludes network latency) |
-| `"client"` | `Date.now()` on first `message.part.delta` | ✅ When BusEvents are delivered |
+| `"sdk"` | `part.time.start` — SDK's `Date.now()` when first stream chunk arrives (via `message.part.updated` or `api.state.part()` scan) | ✅ Most accurate (excludes local IPC/event-loop latency) |
+| `"tui"` | `Date.now()` on first `message.part.delta` | ✅ When BusEvents are delivered |
 
-**Priority logic**: Server timing is preferred; client replaces nothing once server is set. Invalid timestamps (`start <= created`) are dropped.
+**Priority logic**: SDK timing is preferred; once an SDK value is set, later TUI events are ignored. TUI values can be upgraded when a valid SDK `time.start` arrives later. Invalid timestamps (`start <= created`) are dropped.
 
 **`messageKey` (dedupe)**
 
@@ -262,6 +262,8 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 |--------|------|
 | `message-timing.ts` | `created` / `completed` |
 | `first-part-time.ts` | TTFT tracker (sidebar + JSONL input) |
+| `token-speed.ts` | Pure speed calculations (`computeTokenSpeed`, `computeAvgTokenSpeed`) |
+| `streaming-state.ts` | Streaming phase state machine (`advanceStreamingNow`) |
 | `stats.ts` | shared per-message hit % |
 | `sidebar-host.tsx` | `createFirstPartTimeTracker`, `createTimelineCollector` |
 | `plugin.tsx` | reads config |
@@ -288,5 +290,5 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 ## Example line
 
 ```json
-{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"server","tps":8.83,"finish":"stop"}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"sdk","tps":8.83,"finish":"stop"}
 ```

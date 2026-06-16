@@ -80,6 +80,7 @@ sequenceDiagram
 | `format-cost.ts` / `format-tokens.ts` / `format-cache-ui.ts` | Display formatting (`computeHitBarWidth` lives in `tui-panel/layout.ts`) |
 | `format-model.ts` | Sub-agent row label (`formatSubAgentLabel`) and vendor brand colors (`modelRowColor`) |
 | `message-timing.ts` | SDK time fields |
+| `token-speed.ts` / `streaming-state.ts` | Speed calculations & streaming phase state machine |
 | `timeline/` | Per-call JSONL (`records` / `writer` / `collector`) |
 | `plugin-config.ts` / `load-config.ts` | Config normalization |
 
@@ -155,12 +156,16 @@ Implementation: `agents-view.tsx` calls `formatSubAgentLabel` + `modelRowColor`;
 
 | Data | Trigger |
 |------|---------|
-| Main snapshot | `createMemo` reads `refreshTick` + `session.get(sid)` (aggregate); fallback `messages(sid)` |
+| Main snapshot | `createMemo` reads `refreshTick` + `session.get?.(sid)` (aggregate); fallback `messages(sid)` |
 | Main messages (Hit trend) | `createMemo` reads `refreshTick` + `messages(sid)` |
-| Sub-agent content | `refreshTick` + `childIds` → `session.get(cid)` per child; fallback `messages(cid)` |
+| Sub-agent content | `refreshTick` + `childIds` → `session.get?.(cid)` per child; fallback `messages(cid)` |
 | Sub-agent ids | `session.list` callback / debounced refresh on foreign activity |
 
 `sidebar-host` subscribes to `message.updated` and bumps `refreshTick` so dependent memos recompute; session totals follow `session.get()` aggregates, while per-turn trend follows recent messages.
+
+### session.get() availability
+
+`session.get()` provides DB-level aggregates (not capped at 100 messages), but was added in [opencode#26644](https://github.com/anomalyco/opencode/pull/26644) (2026-05-12). Forks that split before this commit — including MiMo-Code — lack the method. The code uses optional-chaining (`get?.()`) and falls back to `session.messages()`, which returns at most the 100 most recent assistant messages per call.
 
 ### Accumulation rules
 

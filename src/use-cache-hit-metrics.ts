@@ -14,6 +14,7 @@ import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary }
 import {
   cacheHitRatio,
   computePerCallHitTrend,
+  emptySessionSnapshot,
   mainSessionHasStats,
   shortModelName,
 } from "./stats.ts"
@@ -46,7 +47,7 @@ export function useCacheHitMetrics(props: {
   const t = createMemo(() => getUiStrings(activeLang(props.display)))
   const hitLabel = createMemo(() => props.display.mainHitLabel ?? t().hit)
   const subs = createMemo(() => props.subAgents())
-  const main = createMemo(() => props.main())
+  const main = createMemo(() => props.main() ?? emptySessionSnapshot())
   const perCall = createMemo(() => computePerCallHitTrend(props.messages()))
   const sessionRatio = createMemo(() => cacheHitRatio(main().cacheRead, main().input))
 
@@ -131,7 +132,7 @@ export function useCacheHitMetrics(props: {
       const firstTime = props.firstPartTime().get(msgID)
       if (firstTime === undefined) continue
       const timing = timingFromAssistantMessage(msgs[i])
-      if (!timing?.isComplete) continue
+      if (!timing) continue
       if (firstTime <= timing.created) continue
       return firstTime - timing.created
     }

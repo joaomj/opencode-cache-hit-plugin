@@ -27,7 +27,7 @@ function collector(
 describe("createTimelineCollector (event-driven)", () => {
   test("writes ttftMs when firstPartTime tracker has entry", async () => {
     const ttft = createFirstPartTimeTracker()
-    ttft.handlePart("a1", "text", 1500, "server")
+    ttft.handlePart("a1", "text", 1500, "sdk")
     const appended: LlmCallRecord[] = []
     const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
@@ -42,7 +42,7 @@ describe("createTimelineCollector (event-driven)", () => {
     await new Promise((r) => setTimeout(r, 50))
     expect(appended).toHaveLength(1)
     expect(appended[0].ttftMs).toBe(500)
-    expect(appended[0].ttftSource).toBe("server")
+    expect(appended[0].ttftSource).toBe("sdk")
   })
 
   test("disabled is no-op", () => {

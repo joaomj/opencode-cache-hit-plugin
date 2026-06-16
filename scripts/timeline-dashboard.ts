@@ -273,7 +273,8 @@ tr:hover td{background:#1c2128}
     <thead><tr>
       <th>Session ID</th><th>Model</th><th>Scope</th><th class="num">Calls</th>
       <th class="num">Total Tokens</th><th class="num">Input</th><th class="num">Output</th>
-      <th class="num">Cache Read</th><th class="num">Avg Hit</th><th class="num" id="thSessionCost">Cost</th><th>Start</th>
+      <th class="num">Cache Read</th><th class="num">Avg Hit</th><th class="num" id="thSessionCost">Cost</th>
+      <th class="num">Avg TTFT</th><th class="num">Avg TPS</th><th>Start</th>
     </tr></thead>
     <tbody id="sessionBody"></tbody>
   </table>
@@ -293,6 +294,7 @@ tr:hover td{background:#1c2128}
       <th style="width:0"></th><th class="num">Time</th><th>Scope</th><th>Session</th><th>Model</th>
       <th class="num">Input</th><th class="num">Output</th><th class="num">CacheR</th><th class="num">CacheW</th>
       <th class="num">Hit%</th><th class="num">Cost</th><th class="num">Dur</th>
+      <th class="num">TTFT</th><th class="num">TPS</th>
     </tr></thead>
     <tbody id="detailBody"></tbody>
   </table>
@@ -300,8 +302,10 @@ tr:hover td{background:#1c2128}
 
 <script>
 var RAW_DATA = TMPL_DATA
-var EXPAND_FIELDS = ["schema","recordedAt","sessionId","rootSessionId","scope","messageKey","modelId","created","completedAt","durationMs","isComplete","input","output","reasoning","cacheRead","cacheWrite","cost","hitPercent","skippedForHit"]
+var EXPAND_FIELDS = ["schema","recordedAt","sessionId","rootSessionId","scope","messageKey","modelId","created","completedAt","durationMs","isComplete","input","output","reasoning","cacheRead","cacheWrite","cost","hitPercent","skippedForHit","ttftMs","ttftSource","tps","finish"]
 
+function fmtTtft(ms) { if (ms == null) return "-"; return ms < 1000 ? ms + "ms" : (ms / 1000).toFixed(1) + "s" }
+function fmtTps(v) { if (v == null) return "-"; return Math.round(v) + " tok/s" }
 function fmtDur(ms) { if (ms == null) return "-"; return ms < 1000 ? ms + "ms" : (ms/1000).toFixed(1) + "s" }
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;") }
 
@@ -540,6 +544,8 @@ function renderSessionTable(data) {
     var scope = sessionScopeLabel(rd)
     var avg = hits.length ? hits.reduce(function(s,h){return s+h},0)/hits.length : 0
     var totalT = rd.reduce(function(s,r){return s+r.input+r.output+r.cacheRead+r.cacheWrite},0)
+    var ttfts = rd.filter(function(r){return r.ttftMs != null && r.ttftMs > 0}).map(function(r){return r.ttftMs})
+    var ttps = rd.filter(function(r){return r.tps != null && r.tps > 0}).map(function(r){return r.tps})
     rows.push({
       id:id, model:models.join(" | ")||"(unknown)", scope:scope,
       calls:rd.length, totalT:totalT,
@@ -547,6 +553,8 @@ function renderSessionTable(data) {
       to:rd.reduce(function(s,r){return s+r.output},0),
       tcr:rd.reduce(function(s,r){return s+r.cacheRead},0),
       avg:avg, cost:rd.reduce(function(s,r){return s+r.cost},0),
+      avgTtft: ttfts.length ? ttfts.reduce(function(s,v){return s+v},0)/ttfts.length : null,
+      avgTps: ttps.length ? ttps.reduce(function(s,v){return s+v},0)/ttps.length : null,
       start:rd[0].created||""
     })
   })
@@ -558,6 +566,7 @@ function renderSessionTable(data) {
       '</span></td><td class="num">'+r.calls+'</td><td class="num">'+(r.totalT/1e6).toFixed(2)+'M</td><td class="num">'+r.ti.toLocaleString()+
       '</td><td class="num">'+r.to.toLocaleString()+'</td><td class="num">'+r.tcr.toLocaleString()+
       '</td><td class="num '+cls(r.avg)+'">'+r.avg.toFixed(1)+'%</td><td class="num">'+fmtCost(r.cost)+
+      '</td><td class="num">'+fmtTtft(r.avgTtft)+'</td><td class="num">'+fmtTps(r.avgTps)+
       '</td><td>'+r.start.slice(0,19)+'</td></tr>'
   }).join("")
 }
@@ -597,8 +606,10 @@ function renderDetailTable(data) {
       '<td class="num '+cls(r.hitPercent)+'">'+hitPct+'</td>'+
       '<td class="num">'+fmtCost(r.cost)+'</td>'+
       '<td class="num">'+fmtDur(r.durationMs)+'</td>'+
+      '<td class="num">'+fmtTtft(r.ttftMs)+'</td>'+
+      '<td class="num">'+fmtTps(r.tps)+'</td>'+
     '</tr>'+
-    '<tr class="dr" data-idx="'+i+'"><td colspan="12"><div class="detail-inner"><div class="detail-grid">'+expandDetailGrid(r)+'</div></div></td></tr>'
+    '<tr class="dr" data-idx="'+i+'"><td colspan="14"><div class="detail-inner"><div class="detail-grid">'+expandDetailGrid(r)+'</div></div></td></tr>'
   }).join("")
 }
 

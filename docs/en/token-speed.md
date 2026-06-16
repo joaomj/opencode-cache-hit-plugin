@@ -5,7 +5,7 @@ Feature: display **token generation speed** (tokens/second) in the sidebar panel
 ## 1. Reference: MiMo-Code sidebar
 
 MiMo-Code's TUI sidebar displays speed using two modes:
-- **Streaming**: char-based heuristic (4 chars ≈ 1 token), updated every 1s
+- **Streaming**: char-based heuristic (4 chars ≈ 1 token), polled periodically
 - **Completed**: real token counts from `StepFinishPart.tokens`
 
 ---
@@ -43,12 +43,13 @@ Extend "Agents" section with per-child speed rows. Uses full turn duration only 
 
 | File | Role |
 |------|------|
-| `src/token-speed.ts` | Speed + streaming phase logic |
+| `src/token-speed.ts` | Pure speed calculations (`computeTokenSpeed`, `computeAvgTokenSpeed`, etc.) |
+| `src/streaming-state.ts` | Streaming phase state machine (`advanceStreamingNow`) |
 | `src/sparkline.ts` | Sparkline rendering |
 | `src/first-part-time.ts` | TTFT tracker (sidebar + timeline) |
 | `src/use-cache-hit-metrics.ts` | Last / Avg / TTFT memos |
 | `src/main-session-view.tsx` | Speed section UI |
-| `src/sidebar-host.tsx` | Streaming poll, sub-agent speed |
+| `src/sidebar-host.tsx` | Event-driven streaming wake-up, adaptive polling, sub-agent speed |
 | `src/agents-view.tsx` | Per sub-agent speed row |
 | `src/stats.ts` | `toSubAgentSummary()` speed field |
 | `src/types.ts` | `StreamPart`, `SubAgentSummary.speed` |
@@ -93,7 +94,7 @@ Placement: between **Detail** and **Model** sections.
 │   Last: 48 tok/s                         │
 │   Avg:  42 tok/s                         │
 │   Trend: ▁▃▅▇▆▄▂                        │
-│   TTFT: 944ms                            │  ← last completed call (or "—")
+│   TTFT: 944ms                            │  ← last call with valid first-token timestamp (or "—")
 │                                          │
 │ ▼ Model                                  │
 │   Cost: $0.20                            │
@@ -117,7 +118,8 @@ Placement: between **Detail** and **Model** sections.
 | `api.state.part()` unavailable | **Now** cannot estimate (warmup / `·`) | **Last** / **Avg** still use real tokens; see [TTFT troubleshooting](./ttft-troubleshooting.md) |
 | Missing plugin SDK fields | Some metrics empty | Optional chaining; missing rows show `"—"` (not **Now** idle) |
 | Very short completed turns | **Last** / **Avg** show `<1 tok/s` | `computeTokenSpeed` returns 0 when `durationMs < 500` |
-| `setInterval` polls every 1s | Very lightweight | Idle ticks update phase (`·`); reads `part()` only while streaming |
+
+> **Polling strategy:** Adaptive `setTimeout` (1s active / 3s idle), complemented by `message.part.updated` event-driven wake-up. Very lightweight — idle ticks only update the phase indicator (`·`).
 
 **`—` usage (aligned with §2):** **Now** idle is `·`; `—` is for metrics without reliable data (e.g. TTFT), not streaming idle.
 
@@ -134,7 +136,9 @@ start = firstPartTime (> created) ?? msg.time.created
 speed ≈ (text.length / 4) / ((now - start) / 1000)
 ```
 
-Polled every 1s via `api.state.part()`. When `firstPartTime` is tracked (same hybrid TTFT tracker as timeline / **TTFT** row), the denominator starts at first token — **Now** reflects generation speed, excluding TTFT wait. Falls back to `msg.time.created` until the first stream part is recorded. This is a **turn-average since first output**, not an instantaneous rate.
+**Denominator choice:** When `firstPartTime` is tracked (same hybrid TTFT tracker as timeline / **TTFT** row), the denominator starts at first token — **Now** reflects generation speed, excluding TTFT wait. Falls back to `msg.time.created` until the first stream part is recorded.
+
+**Semantics:** This is a **turn-average since first output**, not an instantaneous rate.
 
 **Why this default**
 

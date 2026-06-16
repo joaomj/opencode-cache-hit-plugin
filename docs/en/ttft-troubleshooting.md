@@ -1,6 +1,6 @@
 # TTFT Troubleshooting Guide
 
-The **Speed** section shows **TTFT** (Time To First Token) for the most recent **completed** assistant turn — the delay from request start (`msg.time.created`) to the first streamed `text` or `reasoning` token.
+The **Speed** section shows **TTFT** (Time To First Token) for the most recent assistant turn with a valid first-part timestamp — the delay from request start (`msg.time.created`) to the first streamed `text` or `reasoning` token. TTFT is available during streaming once the first token arrives, not only after completion.
 
 Example: `TTFT: 944ms` or `TTFT: 1.2s`. When no reliable first-token timestamp is available, the row shows `"—"`.
 
@@ -14,9 +14,9 @@ Design details: [TTFT Hybrid Implementation](./ttft-hybrid.md).
 
 | Situation | Why |
 |-----------|-----|
-| Turn still streaming | TTFT is shown only after `time.completed` is set |
+| Turn still streaming | TTFT is available during streaming once the first token arrives (same as sidebar) |
 | Speed section hidden | `display.showSpeed: false` in `cache-hit.json` |
-| First turn after opening the panel | No completed assistant message yet |
+| First turn after opening the panel | No assistant turn with a valid first-token timestamp yet |
 
 ---
 
@@ -34,7 +34,7 @@ Design details: [TTFT Hybrid Implementation](./ttft-hybrid.md).
 Some setups never expose stream parts or `part.time.start`:
 
 - **Local models** (LM Studio, Ollama) may not populate the parts table ([#23673](https://github.com/anomalyco/opencode/issues/23673))
-- **Missing `part.time.start`** on `message.part.updated` — plugin falls back to client deltas and a part-state scan; if both are empty, TTFT stays `"—"`
+- **Missing `part.time.start`** on `message.part.updated` — plugin falls back to TUI deltas and a part-state scan; if both are empty, TTFT stays `"—"`
 - **`message.part.delta` not delivered** on some OpenCode versions ([#27663](https://github.com/anomalyco/opencode/issues/27663))
 - **Invalid timestamps** (`part.time.start <= msg.time.created`, e.g. SDK issue [#21544](https://github.com/anomalyco/opencode/issues/21544)) — value is omitted rather than showing 0 or negative TTFT
 
@@ -72,9 +72,9 @@ Ensure `timeline.enabled` is `true` in `~/.config/opencode/cache-hit.json` (or l
 | Issue | Effect on TTFT |
 |-------|----------------|
 | [#23673](https://github.com/anomalyco/opencode/issues/23673) Local models, no parts | Often always `"—"` |
-| [#27663](https://github.com/anomalyco/opencode/issues/27663) Lost `message.part.delta` | Client fallback may not run |
+| [#27663](https://github.com/anomalyco/opencode/issues/27663) Lost `message.part.delta` | TUI fallback may not run |
 | [#26924](https://github.com/anomalyco/opencode/issues/26924) Part event ordering | Plugin uses multiple sources to compensate |
-| [#21544](https://github.com/anomalyco/opencode/issues/21544) `time.start` overwritten | Invalid server timestamps are skipped |
+| [#21544](https://github.com/anomalyco/opencode/issues/21544) `time.start` overwritten | Invalid SDK timestamps are skipped |
 
 Total turn duration (`time.completed - time.created`) is always available from message metadata but is **not** shown as TTFT — TTFT measures time-to-first-token only.
 

@@ -80,6 +80,7 @@ sequenceDiagram
 | `format-cost.ts` / `format-tokens.ts` / `format-cache-ui.ts` | 展示格式化（**不含** `computeHitBarWidth`，其在 `tui-panel/layout.ts`） |
 | `format-model.ts` | 子 agent 行 label（`formatSubAgentLabel`）与厂商品牌色（`modelRowColor`） |
 | `message-timing.ts` | SDK 时间字段辅助 |
+| `token-speed.ts` / `streaming-state.ts` | 速度计算与流式 phase 状态机 |
 | `timeline/` | 按次 JSONL（`records` / `writer` / `collector`） |
 | `plugin-config.ts` / `load-config.ts` | 配置归一化与默认值 |
 
@@ -155,12 +156,16 @@ flowchart TD
 
 | 数据 | 触发方式 |
 |------|----------|
-| 主 session snapshot | `createMemo` 内读 `refreshTick` + `session.get(sid)`（聚合）；fallback `messages(sid)` |
+| 主 session snapshot | `createMemo` 内读 `refreshTick` + `session.get?.(sid)`（聚合）；fallback `messages(sid)` |
 | 主 session 消息列表（Hit 趋势） | `createMemo` 内读 `refreshTick` + `messages(sid)` |
-| 子 agent 列表内容 | `refreshTick` + `childIds` → 每个 child 的 `session.get(cid)`；fallback `messages(cid)` |
+| 子 agent 列表内容 | `refreshTick` + `childIds` → 每个 child 的 `session.get?.(cid)`；fallback `messages(cid)` |
 | 子 agent id 集合 | `session.list` 完成回调 / `message.updated` 发现新 child |
 
 主 session **显式**订阅 `message.updated`（在 `sidebar-host`）：每次事件 `refreshTick++`，触发相关 memo 重算；会话总量以 `session.get()` 聚合为准，逐轮趋势使用最近 messages。
+
+### session.get() 可用性
+
+`session.get()` 提供数据库级聚合（不受 100 条消息限制），但在 [opencode#26644](https://github.com/anomalyco/opencode/pull/26644)（2026-05-12）才加入。在此之前 fork 的分支（含 MiMo-Code）缺少该方法。代码使用可选链调用（`get?.()`），fallback 到 `session.messages()`，后者每次调用最多返回最近 100 条 assistant 消息。
 
 ### 累加规则
 

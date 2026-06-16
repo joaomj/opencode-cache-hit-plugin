@@ -1,15 +1,15 @@
 /** Tracks first streaming part timestamp per message for TTFT (UI + timeline). */
 
-const STREAM_PART_TYPES = new Set(["text", "reasoning"])
+export const STREAM_PART_TYPES = new Set(["text", "reasoning"])
 
 export type FirstPartTimeTracker = {
   handlePart: (
     messageID: string,
     partType: string,
     startTime: number,
-    source?: "server" | "client",
+    source?: "sdk" | "tui",
   ) => boolean
-  getSource: (messageID: string) => "server" | "client" | undefined
+  getSource: (messageID: string) => "sdk" | "tui" | undefined
   get: () => ReadonlyMap<string, number>
   reset: () => void
   dispose: () => void
@@ -18,22 +18,22 @@ export type FirstPartTimeTracker = {
 export function createFirstPartTimeTracker(): FirstPartTimeTracker {
   let disposed = false
   const firstPartTime = new Map<string, number>()
-  const firstPartSource = new Map<string, "server" | "client">()
+  const firstPartSource = new Map<string, "sdk" | "tui">()
 
   const handlePart = (
     messageID: string,
     partType: string,
     startTime: number,
-    source: "server" | "client" = "server",
+    source: "sdk" | "tui" = "sdk",
   ): boolean => {
     if (disposed || !messageID || !STREAM_PART_TYPES.has(partType)) return false
 
     const existing = firstPartTime.get(messageID)
     const existingSource = firstPartSource.get(messageID)
 
-    if (existing !== undefined && existingSource === "server") return false
+    if (existing !== undefined && existingSource === "sdk") return false
 
-    if (existing !== undefined && existingSource === "client" && source === "server") {
+    if (existing !== undefined && existingSource === "tui" && source === "sdk") {
       firstPartTime.set(messageID, startTime)
       firstPartSource.set(messageID, source)
       return true

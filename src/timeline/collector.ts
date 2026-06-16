@@ -102,7 +102,6 @@ export function createTimelineCollector(opts: {
     memory.push(rec)
     const max = opts.config.maxMemoryRows
     while (memory.length > max) memory.shift()
-
   }
 
   return {

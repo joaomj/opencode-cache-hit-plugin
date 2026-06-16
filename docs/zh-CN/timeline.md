@@ -62,7 +62,7 @@ export type LlmCallRecord = {
   /** compaction / summary 消息 */
   skippedForHit: boolean
   ttftMs?: number          // 首 Token 延迟（firstPartTime - created）
-  ttftSource?: "server" | "client"  // TTFT 数据来源
+  ttftSource?: "sdk" | "tui"  // TTFT 数据来源
   tps?: number             // 每秒 Token 数（output / genTime * 1000）
   finish?: string          // 完成原因（如 "stop", "tool-calls", "error"）
 }
@@ -74,8 +74,8 @@ export type LlmCallRecord = {
 
 捕获顺序（见 [ttft-hybrid.md](./ttft-hybrid.md)）：
 
-1. `message.part.updated` — `text` / `reasoning` 的 `part.time.start`（服务端）
-2. `message.part.delta` — 首个 `text` / `reasoning` 增量上的 `Date.now()`（客户端）
+1. `message.part.updated` — `text` / `reasoning` 的 `part.time.start`（SDK）
+2. `message.part.delta` — 首个 `text` / `reasoning` 增量上的 `Date.now()`（TUI）
 3. `message.updated` — 仍缺失时扫描 `api.state.part()` 取最早有效 `time.start`
 
 全部失败时（如本地模型无 parts）省略 `ttftMs` — 部分 provider 下的预期行为。
@@ -84,10 +84,10 @@ export type LlmCallRecord = {
 
 | 来源 | 描述 | 可靠性 |
 |------|------|--------|
-| `"server"` | part 事件或 `api.state.part()` 扫描的 `part.time.start` | ✅ 最精确（不含网络延迟） |
-| `"client"` | 首个 `message.part.delta` 的 `Date.now()` | ✅ BusEvent 正常投递时可用 |
+| `"sdk"` | `part.time.start` — SDK 收到首个流式 chunk 时的 `Date.now()`（来自 `message.part.updated` 或 `api.state.part()` 扫描） | ✅ 最精确（不含本地 IPC/事件循环延迟） |
+| `"tui"` | 首个 `message.part.delta` 的 `Date.now()` | ✅ BusEvent 正常投递时可用 |
 
-**优先级逻辑**：优先服务端；一旦已有服务端记录则不被客户端覆盖。无效时间戳（`start <= created`）会被丢弃。
+**优先级逻辑**：优先 SDK 端；一旦已有 SDK 端记录则不被 TUI 端覆盖。无效时间戳（`start <= created`）会被丢弃。
 
 **`messageKey`（去重键）**
 
@@ -284,6 +284,8 @@ bun scripts/timeline-dashboard.ts --open
 |------|------|
 | `message-timing.ts` | 提供 `created` / `completed` / `formatTimingShort` |
 | `first-part-time.ts` | TTFT tracker（侧边栏 + JSONL 共用） |
+| `token-speed.ts` | 纯速度计算（`computeTokenSpeed`、`computeAvgTokenSpeed`） |
+| `streaming-state.ts` | 流式 phase 状态机（`advanceStreamingNow`） |
 | `stats.ts` | 抽出共享 `perMessageHitPercent(msg)`，供 `computePerCallHitTrend` 与 `assistantMessageToRecord` 共用 |
 | `sidebar-host.tsx` | `createFirstPartTimeTracker`（始终）；`createTimelineCollector`（enabled 时落盘） |
 | `plugin.tsx` | 无改动或仅读 config |
@@ -318,7 +320,7 @@ bun scripts/timeline-dashboard.ts --open
 ## 示例 JSONL 行
 
 ```json
-{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"server","tps":8.83,"finish":"stop"}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"sdk","tps":8.83,"finish":"stop"}
 ```
 
 ---

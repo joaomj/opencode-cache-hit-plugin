@@ -32,7 +32,7 @@ export function assistantMessageToRecord(
   scope: "main" | "child",
   recordedAt: number,
   firstPartTime?: number,
-  ttftSource?: "server" | "client",
+  ttftSource?: "sdk" | "tui",
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)

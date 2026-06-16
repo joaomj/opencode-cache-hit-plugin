@@ -14,27 +14,29 @@ type TextPart = {
 
 `part.time.start` is often missing because of SDK design, provider differences, proxies, event ordering, or upstream bugs (e.g. [#21544](https://github.com/anomalyco/opencode/issues/21544)). The plugin therefore combines several data sources.
 
+> **Terminology**: In this document, **"sdk"** refers to the OpenCode SDK processor layer — where `part.time.start = Date.now()` is recorded when the first streaming chunk arrives. It is **not** the LLM provider API. **"tui"** refers to the TUI plugin's JavaScript event handler (`Date.now()` in `message.part.delta` callback). Both are local measurements; neither comes from the LLM provider.
+
 **Sidebar TTFT is always collected** via `src/first-part-time.ts`. **`timeline.enabled` only controls JSONL disk writes** — not the sidebar row.
 
 ## Data sources (priority order)
 
-### 1. Server-side timing (preferred)
+### 1. SDK-side timing (preferred)
 
 | | |
 |--|--|
 | **Trigger** | `message.part.updated` |
 | **Fields** | `part.time.start` on `text` or `reasoning` parts |
 | **Formula** | `ttftMs = part.time.start - msg.time.created` |
-| **Accuracy** | Best — excludes client network latency |
+| **Accuracy** | Best — earliest available timestamp (SDK-local, before IPC/event-loop delay to TUI plugin) |
 
-### 2. Client-side timing (fallback)
+### 2. TUI-side timing (fallback)
 
 | | |
 |--|--|
 | **Trigger** | First `message.part.delta` with `field` = `text` or `reasoning` |
 | **Fields** | `Date.now()` at receive time |
 | **Formula** | `ttftMs = Date.now() - msg.time.created` |
-| **Accuracy** | Includes network latency; depends on BusEvent delivery |
+| **Accuracy** | Includes all latency (provider processing + internet + SDK internal + local IPC + JS event-loop); depends on BusEvent delivery |
 
 ### 3. Part-state scan (fallback)
 
@@ -43,13 +45,13 @@ type TextPart = {
 | **Trigger** | `message.updated` for an assistant message when no timestamp is stored yet; also each 1s streaming poll on the in-flight message while **Now** is active |
 | **Fields** | Earliest `part.time.start` among `text` / `reasoning` parts from `api.state.part()` |
 | **Formula** | Same as source 1 |
-| **Accuracy** | Same as server-side when persisted parts include `time.start` |
+| **Accuracy** | Same as SDK-side when persisted parts include `time.start` |
 
 **Role of `api.state.part()`**: OpenCode keeps a state store of parts per message. When part events are missing or arrive late, `message.updated` can scan this store for the earliest valid `time.start`. This works when parts were persisted with timing data; some backends (e.g. local models without a parts table) still have no usable `time.start` — see [ttft-troubleshooting.md](./ttft-troubleshooting.md).
 
 ## Priority rules
 
-Server timestamps win over client timestamps for the same message. Once a server value is stored, later client events are ignored. Client values can be upgraded when a valid server `time.start` arrives later.
+SDK timestamps win over TUI timestamps for the same message. Once an SDK value is stored, later TUI events are ignored. TUI values can be upgraded when a valid SDK `time.start` arrives later.
 
 Timestamps with `start <= msg.time.created` are discarded (clock skew / bad SDK data).
 
@@ -67,11 +69,11 @@ sequenceDiagram
 
     Note over SDK: Streaming starts
     SDK->>Host: message.part.updated
-    Host->>Tracker: store server time.start
+    Host->>Tracker: store sdk time.start
 
     Note over SDK: No time.start on event
     SDK->>Host: message.part.delta
-    Host->>Tracker: store client Date.now()
+    Host->>Tracker: store tui Date.now()
 
     Note over SDK: Streaming poll (1s)
     Host->>Tracker: scan api.state.part on in-flight if still empty
@@ -90,12 +92,12 @@ sequenceDiagram
 | `src/first-part-time.ts` | Per-message first-part timestamps |
 | `src/sidebar-host.tsx` | Subscribes to part / message events |
 | `src/use-cache-hit-metrics.ts` | `lastTtft`, **Last** / **Avg** / sparkline speed (gen time when tracked) |
-| `src/token-speed.ts` | Streaming **Now** speed denominator |
+| `src/streaming-state.ts` | Streaming **Now** speed denominator (via `advanceStreamingNow`) |
 | `src/timeline/collector.ts` | Writes `ttftMs` / `ttftSource` when timeline is enabled |
 
 ## Sidebar display
 
-Shows the latest **completed** non-summary assistant turn (`944ms`, `1.2s`, or `"—"`). The same tracker drives **Now** / **Last** / **Avg** generation-speed denominators when timestamps exist. Display rules and troubleshooting: [ttft-troubleshooting.md](./ttft-troubleshooting.md).
+Shows the most recent non-summary assistant turn with a valid first-part timestamp — available during streaming once the first token arrives (`944ms`, `1.2s`, or `"—"`). The same tracker drives **Now** / **Last** / **Avg** generation-speed denominators when timestamps exist. Display rules and troubleshooting: [ttft-troubleshooting.md](./ttft-troubleshooting.md).
 
 ## Timeline JSONL
 
@@ -104,7 +106,7 @@ When `timeline.enabled: true`, each completed assistant record may include:
 ```typescript
 {
   ttftMs?: number
-  ttftSource?: "server" | "client"
+  ttftSource?: "sdk" | "tui"
 }
 ```
 
@@ -115,8 +117,8 @@ Same tracker as the sidebar; see [timeline.md](./timeline.md).
 | Plugin | Approach |
 |--------|----------|
 | opencode-throughput | `part.time.start` only |
-| opencode-hud | Client `performance.now()` only |
-| opencode-cache-hit | Server + client + part-state scan |
+| opencode-hud | TUI `performance.now()` only |
+| opencode-cache-hit | SDK + TUI + part-state scan |
 
 ## Tests
 

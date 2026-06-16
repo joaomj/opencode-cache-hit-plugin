@@ -2,7 +2,7 @@
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
 import type { DisplayConfig, CacheTTLConfig } from "./plugin-config.ts"
 import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary } from "./types.ts"
-import type { StreamingPhase } from "./token-speed.ts"
+import type { StreamingPhase } from "./streaming-state.ts"
 import { PLUGIN_VERSION } from "./version.ts"
 import { AgentsView } from "./agents-view.tsx"
 import { MainSessionView } from "./main-session-view.tsx"

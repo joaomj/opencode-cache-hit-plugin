@@ -94,9 +94,9 @@ describe("assistantMessageToRecord", () => {
       time: { created: 1000, completed: 3000 },
       tokens: { input: 10, output: 20 },
     }
-    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500, "server")
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500, "sdk")
     expect(rec).not.toBeNull()
-    expect(rec!.ttftSource).toBe("server")
+    expect(rec!.ttftSource).toBe("sdk")
   })
 
   test("ttftSource undefined when not provided", () => {

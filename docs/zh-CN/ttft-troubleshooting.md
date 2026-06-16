@@ -1,6 +1,6 @@
 # TTFT 故障排除指南
 
-**速度** 区域中的 **首Token**（TTFT）表示最近一条**已完成** assistant 轮次的首 Token 延迟：从请求开始（`msg.time.created`）到首个 `text` 或 `reasoning` 流式 token 的时间。
+**速度** 区域中的 **首Token**（TTFT）表示最近一条有有效 first-part 时间戳的 assistant 轮次的首 Token 延迟：从请求开始（`msg.time.created`）到首个 `text` 或 `reasoning` 流式 token 的时间。流式中首 token 到达即可显示，不依赖轮次完成。
 
 示例：`首Token: 944ms` 或 `首Token: 1.2s`。无法获得可靠的首 token 时间戳时显示 `"—"`。
 
@@ -14,9 +14,9 @@
 
 | 情况 | 原因 |
 |------|------|
-| 轮次仍在流式输出 | 仅在 `time.completed` 出现后展示 TTFT |
+| 轮次仍在流式输出 | 流式中首 token 到达即可展示（与侧边栏相同） |
 | 速度区域被隐藏 | `cache-hit.json` 中 `display.showSpeed: false` |
-| 刚打开面板尚无完成轮次 | 还没有可统计的 assistant 消息 |
+| 刚打开面板尚无可用首Token | 还没有带有效 first-part 时间戳的 assistant 轮次 |
 
 ---
 
@@ -34,7 +34,7 @@
 部分环境不提供流式 part 或 `part.time.start`：
 
 - **本地模型**（LM Studio、Ollama）可能无 parts 表 ([#23673](https://github.com/anomalyco/opencode/issues/23673))
-- **`message.part.updated` 无 `part.time.start`** — 插件会尝试客户端增量与 part 状态扫描；两者皆空则 TTFT 为 `"—"`
+- **`message.part.updated` 无 `part.time.start`** — 插件会尝试 TUI 端增量与 part 状态扫描；两者皆空则 TTFT 为 `"—"`
 - **部分 OpenCode 版本不投递 `message.part.delta`** ([#27663](https://github.com/anomalyco/opencode/issues/27663))
 - **时间戳无效**（`part.time.start <= msg.time.created`，如 SDK [#21544](https://github.com/anomalyco/opencode/issues/21544)）— 省略该值，避免显示 0 或负 TTFT
 
@@ -72,9 +72,9 @@
 | Issue | 对 TTFT 的影响 |
 |-------|----------------|
 | [#23673](https://github.com/anomalyco/opencode/issues/23673) 本地模型无 parts | 常始终为 `"—"` |
-| [#27663](https://github.com/anomalyco/opencode/issues/27663) 丢失 `message.part.delta` | 客户端路径可能不可用 |
+| [#27663](https://github.com/anomalyco/opencode/issues/27663) 丢失 `message.part.delta` | TUI 端路径可能不可用 |
 | [#26924](https://github.com/anomalyco/opencode/issues/26924) Part 事件乱序 | 插件通过多数据源补偿 |
-| [#21544](https://github.com/anomalyco/opencode/issues/21544) `time.start` 被覆盖 | 无效服务端时间戳会被跳过 |
+| [#21544](https://github.com/anomalyco/opencode/issues/21544) `time.start` 被覆盖 | 无效 SDK 端时间戳会被跳过 |
 
 消息元数据中的总轮次耗时（`time.completed - time.created`）始终可得，但**不会**作为 TTFT 展示 — TTFT 只度量首 Token 延迟。
 
