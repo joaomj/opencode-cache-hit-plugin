@@ -9,7 +9,7 @@ function msg(overrides: Partial<AssistantMessage> = {}): AssistantMessage {
   return {
     role: "assistant",
     id: "a1",
-    time: { created: 1, completed: 2 },
+    time: { created: 1700000000000, completed: 1700000002000 },
     tokens: { input: 10 },
     ...overrides,
   } as AssistantMessage
@@ -27,7 +27,7 @@ function collector(
 describe("createTimelineCollector (event-driven)", () => {
   test("writes ttftMs when firstPartTime tracker has entry", async () => {
     const ttft = createFirstPartTimeTracker()
-    ttft.handlePart("a1", "text", 1500, "sdk")
+    ttft.handlePart("a1", "text", 1700000000500, "sdk")
     const appended: LlmCallRecord[] = []
     const c = collector({
       config: { ...DEFAULT_TIMELINE, enabled: true },
@@ -38,7 +38,7 @@ describe("createTimelineCollector (event-driven)", () => {
         appended.push(rec)
       },
     })
-    c.handleMessage("root1", msg({ id: "a1", time: { created: 1000, completed: 3000 } }))
+    c.handleMessage("root1", msg({ id: "a1", time: { created: 1700000000000, completed: 1700000003000 } }))
     await new Promise((r) => setTimeout(r, 50))
     expect(appended).toHaveLength(1)
     expect(appended[0].ttftMs).toBe(500)
@@ -96,7 +96,7 @@ describe("createTimelineCollector (event-driven)", () => {
         appended.push(rec)
       },
     })
-    c.handleMessage("r", msg({ id: "inc", time: { created: 1 } }))
+    c.handleMessage("r", msg({ id: "inc", time: { created: 1700000000000 } }))
     expect(appended).toHaveLength(0)
   })
 
@@ -141,6 +141,7 @@ describe("createTimelineCollector (event-driven)", () => {
       config: { ...DEFAULT_TIMELINE, enabled: true },
       getRootSessionId: () => "r",
       getChildIds: () => [],
+      append: async () => {},
     })
     c.handleMessage("r", msg({ id: "m1" }))
     expect(c.memoryRecords()).toHaveLength(1)
@@ -223,7 +224,7 @@ describe("createTimelineCollector (event-driven)", () => {
         appended.push(rec)
       },
     })
-    c.handleMessage("r", msg({ id: "inc", time: { created: 1 } }))
+    c.handleMessage("r", msg({ id: "inc", time: { created: 1700000000000 } }))
     expect(appended).toHaveLength(1)
     expect(appended[0].isComplete).toBe(false)
   })
@@ -251,6 +252,7 @@ describe("createTimelineCollector (event-driven)", () => {
       config: { ...DEFAULT_TIMELINE, enabled: true, maxMemoryRows: 2 },
       getRootSessionId: () => "r",
       getChildIds: () => [],
+      append: async () => {},
     })
     c.handleMessage("r", msg({ id: "a" }))
     c.handleMessage("r", msg({ id: "b" }))

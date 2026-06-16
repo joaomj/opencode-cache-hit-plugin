@@ -236,6 +236,16 @@ export function CacheHitSidebarHost(props: {
         const recorded = recordPart(part.messageID, part.type, part.time.start, "sdk")
         if (recorded) trackStreaming()
       }
+      // When a tool part transitions to "pending" the model has decided to call a tool.
+      // Capture the wall-clock time so pure-tool-calls responses (no text/reasoning
+      // streaming parts) still have a TTFT value.  SDK timestamps on text/reasoning
+      // parts take priority via the tracker's existing upgrade logic.
+      // Only fire if the tool part has no SDK time.start (avoid redundant call when
+      // the part already carried a valid timestamp and was handled by the branch above).
+      if (part.type === "tool" && !part.time?.start && part.state?.status === "pending") {
+        const recorded = recordPart(part.messageID, "tool", Date.now(), "tui")
+        if (recorded) trackStreaming()
+      }
     })
     const unsub2 = props.api.event.on("message.part.delta", (event) => {
       const props_ = event.properties

@@ -118,7 +118,8 @@ sequenceDiagram
 |------|------|
 | opencode-throughput | 仅 `part.time.start` |
 | opencode-hud | 仅 TUI 端 `performance.now()` |
-| opencode-cache-hit | SDK + TUI + part 状态扫描 |
+| oc-tps | text/reasoning delta + tool.pending 回退 |
+| opencode-cache-hit | SDK + TUI + part 状态扫描 + tool.pending 回退 |
 
 ## 测试
 

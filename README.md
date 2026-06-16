@@ -27,6 +27,8 @@ This plugin is **not** part of opencode-visual-cache. Its sidebar layout, panel 
 
 The **cache TTL** feature (elapsed time display with color-coded status) is inspired by [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer) by nero-sensei. The original plugin provides a standalone sidebar countdown for prompt cache expiration; this plugin integrates the concept directly into the cache-hit panel.
 
+The **tool-part TTFT fallback** (capturing `tool.pending` as first-response time when no text/reasoning streaming part exists) is inspired by [oc-tps](https://github.com/Tarquinen/oc-tps) by Tarquinen, which is the first OpenCode plugin to properly handle `finish=tool-calls` for TTFT measurement.
+
 ## Features
 
 - **Cache hit rate**: session total + **per-turn** rate with trend (↑ / ↓ / `-`) on the main block

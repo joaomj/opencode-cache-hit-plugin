@@ -27,6 +27,8 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 **缓存存活时间**功能（显示已缓存时长 + 颜色状态）借鉴自 [opencode-cache-timer](https://github.com/nero-sensei/opencode-cache-timer)（作者：nero-sensei）。原插件提供独立侧边栏倒计时；本插件将该概念直接集成到 cache-hit 面板中。
 
+**工具调用 TTFT 回退**（当无 text/reasoning 流式 part 时，以 `tool.pending` 作为首次响应时间）借鉴自 [oc-tps](https://github.com/Tarquinen/oc-tps)（作者：Tarquinen），该插件率先在 OpenCode 生态中正确处理了 `finish=tool-calls` 的 TTFT 计量。
+
 ## 功能一览
 
 - **命中率**：会话累计 + **单轮**命中率与趋势（↑ / ↓ / `-`）

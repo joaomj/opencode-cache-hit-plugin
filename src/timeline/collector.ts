@@ -95,6 +95,8 @@ export function createTimelineCollector(opts: {
     )
     if (!rec) return
     if (!opts.config.flushIncomplete && !rec.isComplete) return
+    // Skip records with invalid timestamps (e.g. uninitialised epoch 1970)
+    if (rec.created.startsWith("1970")) return
 
     const logPath = timelineDailyLogPath(logsDir, ensureDateKey())
     void append(logPath, rec).catch(() => {})

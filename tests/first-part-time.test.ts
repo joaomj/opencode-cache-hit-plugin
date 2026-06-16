@@ -18,9 +18,23 @@ describe("createFirstPartTimeTracker", () => {
     expect(t.get().get("m1")).toBe(1200)
   })
 
+  test("records tool parts", () => {
+    const t = createFirstPartTimeTracker()
+    expect(t.handlePart("m1", "tool", 1500, "tui")).toBe(true)
+    expect(t.get().get("m1")).toBe(1500)
+    expect(t.getSource("m1")).toBe("tui")
+  })
+
+  test("tool part does not override existing sdk timing", () => {
+    const t = createFirstPartTimeTracker()
+    t.handlePart("m1", "text", 1200, "sdk")
+    expect(t.handlePart("m1", "tool", 1500, "tui")).toBe(false)
+    expect(t.get().get("m1")).toBe(1200)
+  })
+
   test("ignores non-stream part types", () => {
     const t = createFirstPartTimeTracker()
-    expect(t.handlePart("m1", "tool", 1500, "sdk")).toBe(false)
+    expect(t.handlePart("m1", "file", 1500, "sdk")).toBe(false)
     expect(t.get().has("m1")).toBe(false)
   })
 

@@ -1,6 +1,6 @@
 /** Tracks first streaming part timestamp per message for TTFT (UI + timeline). */
 
-export const STREAM_PART_TYPES = new Set(["text", "reasoning"])
+export const STREAM_PART_TYPES = new Set(["text", "reasoning", "tool"])
 
 export type FirstPartTimeTracker = {
   handlePart: (

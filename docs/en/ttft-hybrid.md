@@ -118,7 +118,8 @@ Same tracker as the sidebar; see [timeline.md](./timeline.md).
 |--------|----------|
 | opencode-throughput | `part.time.start` only |
 | opencode-hud | TUI `performance.now()` only |
-| opencode-cache-hit | SDK + TUI + part-state scan |
+| oc-tps | text/reasoning delta + tool.pending fallback |
+| opencode-cache-hit | SDK + TUI + part-state scan + tool.pending fallback |
 
 ## Tests
 
