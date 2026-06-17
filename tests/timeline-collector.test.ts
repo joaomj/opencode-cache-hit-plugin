@@ -64,8 +64,10 @@ describe("createTimelineCollector (event-driven)", () => {
     ])
   })
 
-  test("omits toolDurations when config.toolDurations is false", async () => {
-    const toolTiming = createToolTimingTracker()
+  test("omits summary when config.toolSummary is false", async () => {
+    const toolTiming = createToolTimingTracker({
+      isSummaryEnabled: () => false,
+    })
     toolTiming.handleToolPart("a1", {
       type: "tool",
       tool: "bash",
@@ -80,7 +82,7 @@ describe("createTimelineCollector (event-driven)", () => {
     })
     const appended: LlmCallRecord[] = []
     const c = collector({
-      config: { ...DEFAULT_TIMELINE, enabled: true, toolDurations: false },
+      config: { ...DEFAULT_TIMELINE, enabled: true, toolSummary: false },
       getRootSessionId: () => "root1",
       getChildIds: () => [],
       toolTiming,
@@ -91,7 +93,9 @@ describe("createTimelineCollector (event-driven)", () => {
     c.handleMessage("root1", msg({ id: "a1", time: { created: 1700000000000, completed: 1700000003000 } }))
     await new Promise((r) => setTimeout(r, 50))
     expect(appended).toHaveLength(1)
-    expect(appended[0].toolDurations).toBeUndefined()
+    expect(appended[0].toolDurations).toEqual([
+      { tool: "bash", durationMs: 150 },
+    ])
   })
 
   test("writes ttftMs when firstPartTime tracker has entry", async () => {

@@ -102,9 +102,12 @@ function toolSummary(tool: string, input?: Record<string, unknown>): string | un
   return undefined
 }
 
-export function createToolTimingTracker(): ToolTimingTracker {
+export function createToolTimingTracker(opts?: {
+  isSummaryEnabled?: (tool: string) => boolean
+}): ToolTimingTracker {
   let disposed = false
   const timing = new Map<string, ToolTimingEntry[]>()
+  const isSummaryEnabled = opts?.isSummaryEnabled ?? (() => true)
 
   const handleToolPart = (messageID: string, part: ToolPartEventData) => {
     if (disposed || !messageID || part.type !== "tool") return
@@ -120,14 +123,14 @@ export function createToolTimingTracker(): ToolTimingTracker {
       entry = {
         tool: part.tool,
         callID: part.callID,
-        summary: toolSummary(part.tool, state.input),
+        summary: isSummaryEnabled(part.tool) ? toolSummary(part.tool, state.input) : undefined,
         status: "running",
       }
       entries.push(entry)
       timing.set(messageID, entries)
     }
 
-    if (entry.summary === undefined && state.input) {
+    if (entry.summary === undefined && state.input && isSummaryEnabled(part.tool)) {
       entry.summary = toolSummary(part.tool, state.input)
     }
 

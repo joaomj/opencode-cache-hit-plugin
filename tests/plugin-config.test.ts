@@ -4,6 +4,7 @@ import {
   normalizeDisplayConfig,
   normalizeTimelineConfig,
   normalizeCacheTTLConfig,
+  isToolSummaryEnabled,
   parseDuration,
 } from "../src/plugin-config.ts"
 
@@ -31,7 +32,7 @@ describe("normalizeTimelineConfig", () => {
     const t = normalizeTimelineConfig(null)
     expect(t.enabled).toBe(false)
     expect(t.maxMemoryRows).toBe(50)
-    expect(t.toolDurations).toBe(true)
+    expect(t.toolSummary).toEqual({ allTools: true, bash: false })
   })
 
   test("parses enabled", () => {
@@ -40,9 +41,30 @@ describe("normalizeTimelineConfig", () => {
     expect(t.dir).toBe("/tmp/logs")
   })
 
-  test("parses toolDurations flag", () => {
-    expect(normalizeTimelineConfig({ toolDurations: false }).toolDurations).toBe(false)
-    expect(normalizeTimelineConfig({ toolDurations: true }).toolDurations).toBe(true)
+  test("parses toolSummary boolean", () => {
+    expect(normalizeTimelineConfig({ toolSummary: false }).toolSummary).toBe(false)
+    expect(normalizeTimelineConfig({ toolSummary: true }).toolSummary).toBe(true)
+  })
+
+  test("parses toolSummary object", () => {
+    const t = normalizeTimelineConfig({
+      toolSummary: { allTools: true, bash: false },
+    })
+    expect(t.toolSummary).toEqual({ allTools: true, bash: false })
+  })
+
+  test("toolSummary object defaults allTools to true", () => {
+    const t = normalizeTimelineConfig({
+      toolSummary: { bash: false, read: true },
+    })
+    expect(t.toolSummary).toEqual({ allTools: true, bash: false, read: true })
+  })
+
+  test("ignores unknown toolSummary keys", () => {
+    const t = normalizeTimelineConfig({
+      toolSummary: { allTools: false, unknownTool: true },
+    })
+    expect(t.toolSummary).toEqual({ allTools: false })
   })
 })
 
@@ -57,6 +79,41 @@ describe("normalizePluginConfig", () => {
     expect(c.cost.rate).toBe(7)
     expect(c.display.lang).toBe("zh")
     expect(c.timeline.enabled).toBe(false)
+  })
+})
+
+describe("isToolSummaryEnabled", () => {
+  test("boolean true enables all tools", () => {
+    expect(isToolSummaryEnabled(true, "bash")).toBe(true)
+    expect(isToolSummaryEnabled(true, "read")).toBe(true)
+  })
+
+  test("boolean false disables all tools", () => {
+    expect(isToolSummaryEnabled(false, "bash")).toBe(false)
+    expect(isToolSummaryEnabled(false, "read")).toBe(false)
+  })
+
+  test("object with allTools=true enables unlisted tools", () => {
+    expect(isToolSummaryEnabled({ allTools: true }, "bash")).toBe(true)
+    expect(isToolSummaryEnabled({ allTools: true }, "read")).toBe(true)
+  })
+
+  test("object with allTools=false disables unlisted tools", () => {
+    expect(isToolSummaryEnabled({ allTools: false }, "bash")).toBe(false)
+    expect(isToolSummaryEnabled({ allTools: false }, "read")).toBe(false)
+  })
+
+  test("per-tool override takes precedence", () => {
+    const setting = { allTools: true, bash: false, read: true }
+    expect(isToolSummaryEnabled(setting, "bash")).toBe(false)
+    expect(isToolSummaryEnabled(setting, "read")).toBe(true)
+    expect(isToolSummaryEnabled(setting, "edit")).toBe(true) // falls back to allTools
+  })
+
+  test("per-tool override on disabled allTools", () => {
+    const setting = { allTools: false, read: true }
+    expect(isToolSummaryEnabled(setting, "bash")).toBe(false)
+    expect(isToolSummaryEnabled(setting, "read")).toBe(true)
   })
 })
 

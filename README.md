@@ -128,7 +128,7 @@ Supported display currencies in config: `USD`, `CNY`, `EUR`, `GBP`, `JPY` (see `
 
 ### Timeline logs (`timeline`, default off)
 
-Per assistant turn → JSONL (tokens, cache, cost, TTFT, optional per-tool `toolDurations`). [docs/en/timeline.md](docs/en/timeline.md) · [中文](docs/zh-CN/timeline.md).
+Per assistant turn → JSONL (tokens, cache, cost, TTFT, per-tool `toolDurations`). [docs/en/timeline.md](docs/en/timeline.md) · [中文](docs/zh-CN/timeline.md).
 
 ```json
 "timeline": {
@@ -138,14 +138,14 @@ Per assistant turn → JSONL (tokens, cache, cost, TTFT, optional per-tool `tool
   "retainRotated": 5,
   "maxAgeDays": 30,
   "maxLogFiles": 20,
-  "toolDurations": true
+  "toolSummary": { "allTools": true, "bash": false }
 }
 ```
 
 | Field | Default | Meaning |
 |-------|---------|---------|
 | `enabled` | `false` | Master switch |
-| `toolDurations` | `true` | Per-tool execution time in JSONL (`tool`, `summary?`, `durationMs`); set `false` to omit |
+| `toolSummary` | `{ allTools: true, bash: false }` | Controls the privacy-sensitive `toolDurations[].summary` field (secure-by-default: bash off). `true`/`false` for all tools, or `{ allTools, bash?, … }` per-tool. Durations (`tool`, `durationMs`) are always recorded. See [docs/en/timeline.md](docs/en/timeline.md) |
 | `dir` | `""` | `logs/timeline-YYYY-MM-DD.jsonl` under plugin root |
 | `rotateMaxBytes` | `0` | Same-day size roll to `.jsonl.1` |
 | `retainRotated` | `5` | Backups kept per day |

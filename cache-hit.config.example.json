@@ -18,7 +18,10 @@
     "retainRotated": 5,
     "maxAgeDays": 30,
     "maxLogFiles": 20,
-    "toolDurations": true
+    "toolSummary": {
+      "allTools": true,
+      "bash": false
+    }
   },
   "cacheTTL": {
     "enabled": true,

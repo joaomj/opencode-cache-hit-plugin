@@ -2,6 +2,7 @@
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import { CacheHitSidebar } from "./widget.tsx"
 import type { DisplayConfig, TimelineConfig, CacheTTLConfig } from "./plugin-config.ts"
+import { isToolSummaryEnabled } from "./plugin-config.ts"
 import { createTimelineCollector } from "./timeline/collector.ts"
 import {
   createFirstPartTimeTracker,
@@ -72,7 +73,9 @@ export function CacheHitSidebarHost(props: {
   const firstPartTracker = createFirstPartTimeTracker()
   onCleanup(() => firstPartTracker.dispose())
 
-  const toolTiming = createToolTimingTracker()
+  const toolTiming = createToolTimingTracker({
+    isSummaryEnabled: (tool) => isToolSummaryEnabled(timelineConfig().toolSummary, tool),
+  })
   onCleanup(() => toolTiming.dispose())
 
   const timeline = createTimelineCollector({
@@ -253,7 +256,7 @@ export function CacheHitSidebarHost(props: {
         const recorded = recordPart(part.messageID, "tool", Date.now(), "tui")
         if (recorded) trackStreaming()
       }
-      if (part.type === "tool" && timelineConfig().toolDurations) {
+      if (part.type === "tool") {
         toolTiming.handleToolPart(part.messageID, part as ToolPartEventData)
       }
     })

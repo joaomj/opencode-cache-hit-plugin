@@ -66,7 +66,7 @@ export type LlmCallRecord = {
 
 Optional array of completed tool calls within the assistant turn. Each tool call is associated with the assistant message that triggered it (matched by `messageID`). A single assistant message may trigger multiple tool calls (parallel or sequential); all appear in the same `toolDurations` array.
 
-Captured from `message.part.updated` when a tool part transitions `running → completed` or `running → error`. Omitted when `timeline.toolDurations` is `false`, timeline is disabled, no tool parts ran, or part events were missed (no `api.state.part()` backfill, unlike TTFT).
+Captured from `message.part.updated` when a tool part transitions `running → completed` or `running → error`. Omitted when timeline is disabled, no tool parts ran, or part events were missed (no `api.state.part()` backfill, unlike TTFT). The `summary` field is controlled by `timeline.toolSummary`.
 
 | Field | Description |
 |-------|-------------|
@@ -89,11 +89,13 @@ Captured from `message.part.updated` when a tool part transitions `running → c
 
 Other tools: `tool` name only; no `summary`.
 
+**Privacy note**: `bash` commands may contain credentials, tokens, or sensitive file paths. The summary is only truncated to 60 chars, not sanitized. Use `toolSummary.bash: false` to exclude command content from logs while keeping other tool summaries.
+
 Only tools that reached `completed` or `error` are included; still-running tools are excluded. If the `running` event was missed, `state.time.start` on the terminal event is used as the start time. If no valid start time can be determined, that tool is omitted from `toolDurations` (no bogus duration).
 
 **In-memory tracker (`toolTiming`)**
 
-`src/tool-timing.ts` keeps a `Map<messageID, ToolTimingEntry[]>` for the current main session. Entries are **not** evicted after JSONL write (same pattern as `firstPartTime`). Memory grows with assistant turns × tools per turn — typically KB to low MB for very long sessions, not a GC leak. Cleared on main session switch (`toolTiming.reset()` in `sidebar-host`) or plugin dispose. When `timeline.toolDurations` is `false`, `sidebar-host` skips part tracking entirely. v1 does not cap or prune within a session.
+`src/tool-timing.ts` keeps a `Map<messageID, ToolTimingEntry[]>` for the current main session. Entries are **not** evicted after JSONL write (same pattern as `firstPartTime`). Memory grows with assistant turns × tools per turn — typically KB to low MB for very long sessions, not a GC leak. Cleared on main session switch (`toolTiming.reset()` in `sidebar-host`) or plugin dispose. v1 does not cap or prune within a session.
 
 **`ttftMs` null handling**
 
@@ -173,7 +175,10 @@ Optional `dir` (e.g. `~/my-logs/`). Supports `~/` expansion to home directory.
     "retainRotated": 5,
     "maxAgeDays": 30,
     "maxLogFiles": 20,
-    "toolDurations": true
+    "toolSummary": {
+      "allTools": true,
+      "bash": false
+    }
   }
 }
 ```
@@ -192,7 +197,23 @@ Example values above; code defaults below (`enabled: false`, rotation `0` except
 | `retainRotated` | `5` | Same-day backup files to keep (not counting active) |
 | `maxAgeDays` | `0` | On collector start: delete files older than N days (mtime) |
 | `maxLogFiles` | `0` | Cap total `timeline-*.jsonl*` files (each `.1` counts) |
-| `toolDurations` | `true` | Record per-tool execution durations (see `toolDurations` above) |
+| `toolSummary` | `{ allTools: true, bash: false }` | Controls per-tool summary recording (see below) |
+
+**`toolSummary`** controls whether `toolDurations[].summary` is populated. Tool durations (`tool` + `durationMs`) are always recorded; only the privacy-sensitive `summary` field is gated.
+
+| Value | Behavior |
+|-------|----------|
+| `true` | All tools record summaries |
+| `false` | No summaries recorded; only `tool` + `durationMs` |
+| `{ allTools, bash?, read?, ... }` | Per-tool control |
+
+**Per-tool object keys**: `allTools` (default for unlisted tools), `bash`, `read`, `write`, `edit`, `grep`, `glob`, `webfetch`, `websearch`, `task`, `question`. Boolean values override `allTools` for that specific tool.
+
+**Recommended**: Set `bash: false` to prevent command content (which may contain credentials or tokens) from being logged:
+
+```json
+{ "toolSummary": { "allTools": true, "bash": false } }
+```
 
 **Write pipeline** (`writer.ts` + `rotation.ts`)
 
@@ -240,7 +261,7 @@ New filename after midnight; previous days remain until cleanup runs.
 ### Collection
 
 - `message.updated` event carries the full `Message` object. The collector subscribes directly — no polling, no dedup.
-- Switching main session: `resetForRootChange()` clears collector memory; `firstPartTime` and `toolTiming` trackers reset in `sidebar-host`; events for the new session arrive naturally. **`timeline` config** (including `enabled`, `toolDurations`, `dir`) is re-read from `cache-hit.json` on main session switch — same as `display` / `cacheTTL`; edits mid-session without switching sessions require a plugin reload.
+- Switching main session: `resetForRootChange()` clears collector memory; `firstPartTime` and `toolTiming` trackers reset in `sidebar-host`; events for the new session arrive naturally. **`timeline` config** (including `enabled`, `toolSummary`, `dir`) is re-read from `cache-hit.json` on main session switch — same as `display` / `cacheTTL`; edits mid-session without switching sessions require a plugin reload.
 - Restarts are safe: messages before startup were already written to JSONL in the previous session. No replay, no scan.
 
 ## Runtime wiring

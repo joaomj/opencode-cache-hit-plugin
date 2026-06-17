@@ -557,4 +557,76 @@ describe("createToolTimingTracker", () => {
     })
     expect(t.getDurations("msg2")).toBeUndefined()
   })
+
+  test("isSummaryEnabled=false omits summary for that tool", () => {
+    const t = createToolTimingTracker({
+      isSummaryEnabled: (tool) => tool !== "bash",
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "running", input: { command: "ls -la" }, time: { start: 1000 } },
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "completed", time: { start: 1000, end: 1100 } },
+    })
+    expect(t.getDurations("msg1")![0].summary).toBeUndefined()
+    expect(t.getDurations("msg1")![0].durationMs).toBe(100)
+  })
+
+  test("isSummaryEnabled=true preserves summary", () => {
+    const t = createToolTimingTracker({
+      isSummaryEnabled: () => true,
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "running", input: { command: "ls -la" }, time: { start: 1000 } },
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_1",
+      state: { status: "completed", time: { start: 1000, end: 1100 } },
+    })
+    expect(t.getDurations("msg1")![0].summary).toBe("ls -la")
+  })
+
+  test("per-tool isSummaryEnabled: bash off, read on", () => {
+    const t = createToolTimingTracker({
+      isSummaryEnabled: (tool) => tool !== "bash",
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_b",
+      state: { status: "running", input: { command: "curl https://api.example.com" }, time: { start: 1000 } },
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "bash",
+      callID: "call_b",
+      state: { status: "completed", time: { start: 1000, end: 1100 } },
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "read",
+      callID: "call_r",
+      state: { status: "running", input: { filePath: "/src/app.ts" }, time: { start: 1100 } },
+    })
+    t.handleToolPart("msg1", {
+      type: "tool",
+      tool: "read",
+      callID: "call_r",
+      state: { status: "completed", time: { start: 1100, end: 1120 } },
+    })
+    const durations = t.getDurations("msg1")!
+    expect(durations[0].summary).toBeUndefined() // bash disabled
+    expect(durations[1].summary).toBe("app.ts") // read enabled
+  })
 })

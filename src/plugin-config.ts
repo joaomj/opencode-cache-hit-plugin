@@ -20,6 +20,24 @@ export const DEFAULT_DISPLAY: DisplayConfig = {
   showSpeed: true,
 }
 
+export type ToolSummaryConfig = {
+  /** Default for tools not explicitly listed. Default true. */
+  allTools: boolean
+  /** Per-tool overrides. When present, overrides allTools for that tool. */
+  bash?: boolean
+  read?: boolean
+  write?: boolean
+  edit?: boolean
+  grep?: boolean
+  glob?: boolean
+  webfetch?: boolean
+  websearch?: boolean
+  task?: boolean
+  question?: boolean
+}
+
+export type ToolSummarySetting = boolean | ToolSummaryConfig
+
 export type TimelineConfig = {
   enabled: boolean
   /** Empty → `~/.local/share/opencode/logs/cache-hit`. Supports `~/…` expansion. */
@@ -37,8 +55,18 @@ export type TimelineConfig = {
   maxAgeDays: number
   /** 0 = unlimited; max number of `*.jsonl*` files in log dir (oldest mtime deleted first) */
   maxLogFiles: number
-  /** Record per-tool execution durations in JSONL. Default true. */
-  toolDurations: boolean
+  /**
+   * Controls whether tool summaries (privacy-sensitive hints from tool input)
+   * are recorded in JSONL `toolDurations[].summary`.
+   *
+   * - `true`  → all tools record summaries
+   * - `false` → no summaries; only `tool` + `durationMs` are recorded
+   * - `{ allTools, bash?, read?, ... }` → per-tool control
+   *
+   * Default `{ allTools: true, bash: false }`: secure-by-default — bash commands
+   * may contain credentials, tokens, or file paths and are only truncated, not sanitized.
+   */
+  toolSummary: ToolSummarySetting
 }
 
 export const DEFAULT_TIMELINE: TimelineConfig = {
@@ -52,7 +80,8 @@ export const DEFAULT_TIMELINE: TimelineConfig = {
   retainRotated: 5,
   maxAgeDays: 0,
   maxLogFiles: 0,
-  toolDurations: true,
+  // Secure-by-default: bash summaries may leak credentials/tokens (only truncated, not sanitized).
+  toolSummary: { allTools: true, bash: false },
 }
 
 export type CacheTTLConfig = {
@@ -78,6 +107,33 @@ export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
   display: { ...DEFAULT_DISPLAY },
   timeline: { ...DEFAULT_TIMELINE },
   cacheTTL: { ...DEFAULT_CACHE_TTL },
+}
+
+const TOOL_SUMMARY_KEYS: ReadonlySet<string> = new Set([
+  "allTools", "bash", "read", "write", "edit",
+  "grep", "glob", "webfetch", "websearch", "task", "question",
+])
+
+function parseToolSummarySetting(raw: unknown): ToolSummarySetting {
+  if (typeof raw === "boolean") return raw
+  if (!raw || typeof raw !== "object") return true
+  const o = raw as Record<string, unknown>
+  const result: ToolSummaryConfig = { allTools: true }
+  if (typeof o.allTools === "boolean") result.allTools = o.allTools
+  for (const key of TOOL_SUMMARY_KEYS) {
+    if (key === "allTools") continue
+    if (typeof o[key] === "boolean") {
+      ;(result as Record<string, boolean>)[key] = o[key] as boolean
+    }
+  }
+  return result
+}
+
+export function isToolSummaryEnabled(setting: ToolSummarySetting, tool: string): boolean {
+  if (typeof setting === "boolean") return setting
+  const override = (setting as Record<string, boolean | undefined>)[tool]
+  if (typeof override === "boolean") return override
+  return setting.allTools
 }
 
 export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
@@ -106,7 +162,9 @@ export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
   if (typeof o.maxLogFiles === "number" && o.maxLogFiles >= 0) {
     t.maxLogFiles = Math.floor(o.maxLogFiles)
   }
-  if (typeof o.toolDurations === "boolean") t.toolDurations = o.toolDurations
+  if (o.toolSummary !== undefined) {
+    t.toolSummary = parseToolSummarySetting(o.toolSummary)
+  }
   return t
 }
 

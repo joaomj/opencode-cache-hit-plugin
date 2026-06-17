@@ -73,7 +73,7 @@ export type LlmCallRecord = {
 
 可选数组，记录该 assistant 轮次内已完成的 tool 调用。每个 tool 调用归属于触发它的 assistant 消息（按 `messageID` 匹配）。单条 assistant 消息可能触发多个 tool 调用（并行或串行），均记录在同一 `toolDurations` 数组中。
 
-来自 `message.part.updated` 中 tool part 的 `running → completed` 或 `running → error` 转换。当 `timeline.toolDurations` 为 `false`、timeline 未开启、本轮无 tool、或 part 事件丢失时省略（与 TTFT 不同，**无** `api.state.part()` 回填）。
+来自 `message.part.updated` 中 tool part 的 `running → completed` 或 `running → error` 转换。当 timeline 未开启、本轮无 tool、或 part 事件丢失时省略（与 TTFT 不同，**无** `api.state.part()` 回填）。`summary` 字段受 `timeline.toolSummary` 配置控制。
 
 | 字段 | 说明 |
 |------|------|
@@ -96,11 +96,13 @@ export type LlmCallRecord = {
 
 其他工具：仅写 `tool` 名；无 `summary`。
 
+**隐私提示**：`bash` 命令可能包含凭据、令牌或敏感文件路径。summary 仅截断到 60 字符，不做脱敏处理。使用 `toolSummary.bash: false` 可在保留其他工具摘要的同时排除 bash 命令内容。
+
 仅包含已到 `completed` 或 `error` 的工具；仍在 `running` 的不写入。若漏收 `running` 事件，会用终态事件上的 `state.time.start` 作为起点。若无法确定有效起点，该工具不会写入 `toolDurations`（避免错误时长）。
 
 **内存 tracker（`toolTiming`）**
 
-`src/tool-timing.ts` 按 `messageID` 维护 `Map<messageID, ToolTimingEntry[]>`，生命周期与当前主 session 绑定。JSONL 落盘后 **不会** 逐条清理（与 `firstPartTime` 相同）。内存随 assistant 轮次 × 每轮 tool 数增长，极长 session 通常为 KB 到低 MB 量级，不属于 GC 意义上的泄漏。切换主 session 时 `sidebar-host` 调用 `toolTiming.reset()`，插件卸载时 `dispose()` 清空。`timeline.toolDurations` 为 `false` 时 `sidebar-host` 不订阅 part 追踪。v1 不在 session 内做上限或逐条淘汰。
+`src/tool-timing.ts` 按 `messageID` 维护 `Map<messageID, ToolTimingEntry[]>`，生命周期与当前主 session 绑定。JSONL 落盘后 **不会** 逐条清理（与 `firstPartTime` 相同）。内存随 assistant 轮次 × 每轮 tool 数增长，极长 session 通常为 KB 到低 MB 量级，不属于 GC 意义上的泄漏。切换主 session 时 `sidebar-host` 调用 `toolTiming.reset()`，插件卸载时 `dispose()` 清空。v1 不在 session 内做上限或逐条淘汰。
 
 **`ttftMs` null 处理**
 
@@ -182,7 +184,10 @@ export type LlmCallRecord = {
     "retainRotated": 5,
     "maxAgeDays": 30,
     "maxLogFiles": 20,
-    "toolDurations": true
+    "toolSummary": {
+      "allTools": true,
+      "bash": false
+    }
   }
 }
 ```
@@ -201,7 +206,23 @@ export type LlmCallRecord = {
 | `retainRotated` | `5` | 同日大小轮转保留的**备份**个数（不含正在写的活跃文件） |
 | `maxAgeDays` | `0` | collector **启动时**删除超 N 天的 `timeline-*.jsonl*` |
 | `maxLogFiles` | `0` | 日志目录内 `timeline-*.jsonl*` 总数上限（每个 `.1` 单独计数） |
-| `toolDurations` | `true` | 记录各工具执行耗时（见上方 `toolDurations` 说明） |
+| `toolSummary` | `{ allTools: true, bash: false }` | 控制各工具摘要记录（见下方说明） |
+
+**`toolSummary`** 控制 `toolDurations[].summary` 是否填充。工具耗时（`tool` + `durationMs`）始终记录；仅隐私敏感的 `summary` 字段受此开关控制。
+
+| 值 | 行为 |
+|----|------|
+| `true` | 所有工具记录摘要 |
+| `false` | 不记录摘要；仅写 `tool` + `durationMs` |
+| `{ allTools, bash?, read?, ... }` | 按工具控制 |
+
+**按工具对象键**：`allTools`（未列出工具的默认值）、`bash`、`read`、`write`、`edit`、`grep`、`glob`、`webfetch`、`websearch`、`task`、`question`。布尔值覆盖对应工具的 `allTools` 设置。
+
+**推荐**：设置 `bash: false` 以防止可能包含凭据或令牌的命令内容被记录：
+
+```json
+{ "toolSummary": { "allTools": true, "bash": false } }
+```
 
 **写入流程**（`src/timeline/writer.ts` + `rotation.ts`）
 
@@ -251,7 +272,7 @@ export type LlmCallRecord = {
 ### 收集
 
 - `message.updated` 事件携带完整 `Message` 对象。collector 直接订阅事件——无轮询，无去重。
-- 切换主 session：`resetForRootChange()` 清空 collector 内存；`sidebar-host` 同时 `firstPartTime` / `toolTiming` reset；新 session 的事件自然到达。**`timeline` 配置**（含 `enabled`、`toolDurations`、`dir`）在切换主 session 时从 `cache-hit.json` 重读，与 `display` / `cacheTTL` 相同；同 session 内改配置且不切换 session 时需重载插件才生效。
+- 切换主 session：`resetForRootChange()` 清空 collector 内存；`sidebar-host` 同时 `firstPartTime` / `toolTiming` reset；新 session 的事件自然到达。**`timeline` 配置**（含 `enabled`、`toolSummary`、`dir`）在切换主 session 时从 `cache-hit.json` 重读，与 `display` / `cacheTTL` 相同；同 session 内改配置且不切换 session 时需重载插件才生效。
 - 重启安全：启动前的消息已在上次 session 中写入 JSONL。无需回放，无需扫描。
 
 ## 运行时接入

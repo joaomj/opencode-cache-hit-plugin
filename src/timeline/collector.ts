@@ -92,7 +92,7 @@ export function createTimelineCollector(opts: {
       Date.now(),
       ttft.get().get(msgID),
       ttft.getSource(msgID),
-      config.toolDurations ? toolTiming.getDurations(msgID) : undefined,
+      toolTiming.getDurations(msgID),
     )
     if (!rec) return
     if (!config.flushIncomplete && !rec.isComplete) return
