@@ -169,7 +169,7 @@ function genHTML(data: LlmCallRecord[], cost: CostDisplayEmbed): string {
   const jsonData = embedJson(JSON.stringify(data))
   const jsonCost = embedJson(JSON.stringify(cost))
 
-  return `<!DOCTYPE html>
+  const parts = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -677,7 +677,11 @@ populateFilters()
 refresh()
 </script>
 </body>
-</html>`.replace("TMPL_DATA", jsonData).replace("TMPL_COST", jsonCost)
+</html>`.split("TMPL_DATA")
+  if (parts.length !== 2) throw new Error("TMPL_DATA placeholder count mismatch")
+  const costParts = parts[1].split("TMPL_COST")
+  if (costParts.length !== 2) throw new Error("TMPL_COST placeholder count mismatch")
+  return parts[0] + jsonData + costParts[0] + jsonCost + costParts[1]
 }
 
 function openInBrowser(filePath: string): void {
