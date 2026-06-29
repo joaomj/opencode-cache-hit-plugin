@@ -8,6 +8,7 @@ import { AgentsView } from "./agents-view.tsx"
 import { MainSessionView } from "./main-session-view.tsx"
 
 import { useCacheHitMetrics } from "./use-cache-hit-metrics.ts"
+import { formatTokenSpeed, formatTokenTpot } from "./token-speed.ts"
 import {
   createPanelLayout,
   createSectionFold,
@@ -53,6 +54,12 @@ export function CacheHitSidebar(props: {
     layout,
     firstPartTime: props.firstPartTime,
   })
+
+  const formatSpeed = createMemo(() =>
+    props.display.speedUnit === "tps"
+      ? (v: number | undefined) => formatTokenSpeed(v ?? 0)
+      : (v: number | undefined) => formatTokenTpot(v),
+  )
 
   const agentsSuffix = createMemo(() => {
     const n = m.subs().length
@@ -122,7 +129,7 @@ export function CacheHitSidebar(props: {
                 suffix={agentsSuffix()}
                 onToggle={agents.toggle}
               >
-                <AgentsView m={m} layout={layout} providers={props.providers()} formatCost={props.formatCost} />
+                <AgentsView m={m} layout={layout} providers={props.providers()} formatCost={props.formatCost} formatSpeed={formatSpeed()} />
               </TuiSection>
             </Show>
           </Show>

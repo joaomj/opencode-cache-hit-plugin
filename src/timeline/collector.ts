@@ -1,4 +1,5 @@
 import type { FirstPartTimeTracker } from "../first-part-time.ts"
+import type { ItlTracker } from "../itl-tracker.ts"
 import type { ToolTimingTracker } from "../tool-timing.ts"
 import type { TimelineConfig } from "../plugin-config.ts"
 import type { AssistantMessage } from "../types.ts"
@@ -26,11 +27,13 @@ export function createTimelineCollector(opts: {
   getChildIds: () => readonly string[]
   firstPartTime: FirstPartTimeTracker
   toolTiming: ToolTimingTracker
+  itlTracker?: ItlTracker
   /** Test hook: replace disk append */
   append?: (logPath: string, record: LlmCallRecord, config: TimelineConfig) => Promise<void>
 }): TimelineCollector {
   const ttft = opts.firstPartTime
   const toolTiming = opts.toolTiming
+  const itlTracker = opts.itlTracker
   const defaultAppend = opts.append ?? ((path: string, record: LlmCallRecord, cfg: TimelineConfig) =>
     appendTimelineRecord(path, record, {
       maxLinesPerFile: cfg.maxLinesPerFile,
@@ -84,6 +87,7 @@ export function createTimelineCollector(opts: {
     maybePurge(config)
 
     const msgID = msg.id ?? msg.messageID ?? ""
+    const q = itlTracker?.getQuantiles(msgID)
     const rec = assistantMessageToRecord(
       msg,
       sessionID,
@@ -93,6 +97,9 @@ export function createTimelineCollector(opts: {
       ttft.get().get(msgID),
       ttft.getSource(msgID),
       toolTiming.getDurations(msgID),
+      q && q.p50,
+      q && q.p90,
+      q && q.count,
     )
     if (!rec) return
     if (!config.flushIncomplete && !rec.isComplete) return

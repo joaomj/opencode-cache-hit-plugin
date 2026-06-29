@@ -29,7 +29,6 @@ export type UiStrings = {
   lastCall: string
   avg: string
   now: string
-  tokPerSec: string
   trend: string
   ttft: string
   /** Shown in Speed → Now when no stream is active (not a missing-data dash). */
@@ -64,7 +63,6 @@ const EN: UiStrings = {
   lastCall: "Last:",
   avg: "Avg:",
   now: "Now:",
-  tokPerSec: "tok/s",
   trend: "Trend:",
   ttft: "TTFT:",
   streamingIdle: "·",
@@ -98,7 +96,6 @@ const ZH: UiStrings = {
   lastCall: "最近:",
   avg: "平均:",
   now: "实时:",
-  tokPerSec: "tok/s",
   trend: "趋势:",
   ttft: "首Token:",
   streamingIdle: "·",

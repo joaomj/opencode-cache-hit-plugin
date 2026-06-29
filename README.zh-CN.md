@@ -114,7 +114,9 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 ```json
 "display": {
   "lang": "en",
-  "panelBorder": true
+  "panelBorder": true,
+  "showSpeed": true,
+  "speedUnit": "tpot"
 }
 ```
 
@@ -123,6 +125,8 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 | `lang` | `"en"` | `en` / `zh` / `auto` |
 | `panelBorder` | `true` | 外框与内边距 |
 | `mainHitLabel` | （i18n） | 可选，覆盖 Hit 行标签 |
+| `showSpeed` | `true` | 显示/隐藏速度区块 |
+| `speedUnit` | `"tpot"` | `"tpot"`（ms/tok）或 `"tps"`（tok/s） |
 
 **Agents** 段仅汇总**子 session**，不含主 session（详见 `agentsScopeHint`）。主 session 指标始终在上方块中；折叠 **Agents** 可节省空间。各子 session 行与主块 **Model** 行同源模型名（侧栏窄时会截断）；详见 [docs/zh-CN/design.md](docs/zh-CN/design.md)「子 session 行展示」。
 

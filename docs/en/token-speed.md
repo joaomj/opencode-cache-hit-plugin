@@ -1,57 +1,70 @@
 # Token Speed Sidebar — Design
 
-Feature: display **token generation speed** (tokens/second) in the sidebar panel, alongside existing cache hit rate / token / cost metrics.
+Feature: display **token generation speed** in the sidebar panel as **TPOT** (ms per output token), alongside existing cache hit rate / token / cost metrics.
 
 ## 1. Reference: MiMo-Code sidebar
 
 MiMo-Code's TUI sidebar displays speed using two modes:
-- **Streaming**: char-based heuristic (4 chars ≈ 1 token), polled periodically
-- **Completed**: real token counts from `StepFinishPart.tokens`
+- **Streaming**: char-based heuristic (4 chars ≈ 1 token), polled periodically; displayed as ms/tok via `1000 / speed` conversion
+- **Completed**: real token counts from `StepFinishPart.tokens`, displayed as TPOT (ms/token)
 
 ---
 
 ## 2. Features
 
-### Completed-call speed
+### Completed-call speed (TPOT)
 
-Display token speed for **finished** LLM calls using real token counts. When `firstPartTime` is tracked (same hybrid TTFT tracker), **Last**, **Avg**, and the sparkline use generation time (first token → completion), excluding TTFT; otherwise they fall back to full turn duration (`completed - created`).
+Display **TPOT** (Time Per Output Token, ms/token) for finished LLM calls using real token counts. TPOT follows the industry-standard formula:
+
+```
+TPOT = generationMs / (output_tokens + reasoning_tokens - 1)
+```
+
+The `-1` excludes the first token (captured separately by TTFT). When `firstPartTime` is tracked, `generationMs = completedAt - firstPartTime` (excludes TTFT); otherwise it falls back to full turn duration (`completed - created`).
+
+**Edge cases:**
+- `output + reasoning <= 1`: TPOT is undefined (industry standard — single token has no inter-token interval)
+- `generationMs < 500ms`: TPOT is undefined (noise floor)
+
+**Numerator includes reasoning tokens** — reasoning is model decode output, so it counts toward generation speed.
 
 ### Real-time streaming speed
 
-Live speed estimation during streaming using char/4 heuristic. Requires `api.state.part(id)` to access streaming text content.
+Live speed estimation during streaming using char/4 heuristic. Internally computed as tok/s, then converted to ms/tok (`1000 / speed`) for display. Requires `api.state.part(id)` to access streaming text content.
 
 **Now** row states:
 
 | State | Display | Color |
 |-------|---------|-------|
 | Idle (no stream) | `·` | muted |
-| Warmup (TTFT wait, &lt;500ms since start, or no text yet) | `<1 tok/s` | success |
-| Active | `N tok/s` | success |
-| Hold (2s after stream ends) | last `N tok/s` | muted |
+| Warmup (TTFT wait, &lt;500ms since start, or no text yet) | `—` | success |
+| Active | `~N ms/tok` | success |
+| Hold (2s after stream ends) | last `~N ms/tok` | muted |
 
-`—` is reserved for metrics with no data (e.g. TTFT), not for idle streaming.
+`~` marks **Now** as a streaming estimate (char/4 heuristic). **Last** and **Avg** use real token counts and are displayed without `~`.
 
 ### Speed sparkline
 
-Mini inline chart showing speed trend across last N calls. Rendered as block-char sparkline (e.g., `▁▃▅▇▆▄▂`).
+Mini inline chart showing TPOT trend across last N calls. Rendered as block-char sparkline (e.g., `▁▃▅▇▆▄▂`).
 
 ### Per-sub-agent speed
 
-Extend "Agents" section with per-child speed rows. Uses full turn duration only (child sessions do not run the main-session TTFT tracker).
+Extend "Agents" section with per-child TPOT rows. Uses full turn duration only (child sessions do not run the main-session TTFT tracker).
 
 ### Related modules
 
 | File | Role |
 |------|------|
-| `src/token-speed.ts` | Pure speed calculations (`computeTokenSpeed`, `computeAvgTokenSpeed`, etc.) |
+| `src/token-speed.ts` | Pure speed/TPOT calculations (`computeTokenTpotMs`, `computeAvgTokenTpotMs`, `formatTokenTpot`, etc.) |
 | `src/streaming-state.ts` | Streaming phase state machine (`advanceStreamingNow`) |
-| `src/sparkline.ts` | Sparkline rendering |
+| `src/sparkline.ts` | Sparkline rendering + `collectTpotValues` |
 | `src/first-part-time.ts` | TTFT tracker (sidebar + timeline) |
-| `src/use-cache-hit-metrics.ts` | Last / Avg / TTFT memos |
+| `src/itl-tracker.ts` | ITL chunk-interval tracker (sidebar events → JSONL) |
+| `src/use-cache-hit-metrics.ts` | Last / Avg TPOT memos |
 | `src/main-session-view.tsx` | Speed section UI |
-| `src/sidebar-host.tsx` | Event-driven streaming wake-up, adaptive polling, sub-agent speed |
-| `src/agents-view.tsx` | Per sub-agent speed row |
-| `src/stats.ts` | `toSubAgentSummary()` speed field |
+| `src/sidebar-host.tsx` | Event-driven streaming wake-up, adaptive polling, sub-agent TPOT |
+| `src/agents-view.tsx` | Per sub-agent TPOT row |
+| `src/stats.ts` | `toSubAgentSummary()` tpot field |
 | `src/types.ts` | `StreamPart`, `SubAgentSummary.speed` |
 | `src/i18n.ts` | Speed strings incl. `streamingIdle` |
 | `src/plugin-config.ts` | `display.showSpeed` |
@@ -63,7 +76,8 @@ Extend "Agents" section with per-child speed rows. Uses full turn duration only 
 ```json
 {
   "display": {
-    "showSpeed": true
+    "showSpeed": true,
+    "speedUnit": "tpot"
   }
 }
 ```
@@ -71,6 +85,7 @@ Extend "Agents" section with per-child speed rows. Uses full turn duration only 
 | Field | Default | Meaning |
 |-------|---------|---------|
 | `showSpeed` | `true` | Show/hide speed section |
+| `speedUnit` | `"tpot"` | `"tpot"` (ms/tok) or `"tps"` (tok/s) |
 
 ---
 
@@ -90,9 +105,9 @@ Placement: between **Detail** and **Model** sections.
 │   ...                                    │
 │                                          │
 │ ▼ Speed                                  │
-│   Now: 52 tok/s                          │  ← streaming (idle: ·)
-│   Last: 48 tok/s                         │
-│   Avg:  42 tok/s                         │
+│   Now: ~19 ms/tok                         │  ← streaming (idle: ·)
+│   Last: 21 ms/tok                        │
+│   Avg:  24 ms/tok                        │
 │   Trend: ▁▃▅▇▆▄▂                        │
 │   TTFT: 944ms                            │  ← last call with valid first-token timestamp (or "—")
 │                                          │
@@ -103,9 +118,9 @@ Placement: between **Detail** and **Model** sections.
 │                                          │
 │ ▼ Agents (2) · sub-sessions              │
 │   deepseek-v4-f… …cgy1  $0.092          │
-│                     101 tok/s            │
+│                      10 ms/tok           │
 │   deepseek-v4-f… …auBU  $0.044          │
-│                      96 tok/s            │
+│                      11 ms/tok           │
 └──────────────────────────────────────────┘
 ```
 
@@ -117,11 +132,12 @@ Placement: between **Detail** and **Model** sections.
 |------|--------|------------|
 | `api.state.part()` unavailable | **Now** cannot estimate (warmup / `·`) | **Last** / **Avg** still use real tokens; see [TTFT troubleshooting](./ttft-troubleshooting.md) |
 | Missing plugin SDK fields | Some metrics empty | Optional chaining; missing rows show `"—"` (not **Now** idle) |
-| Very short completed turns | **Last** / **Avg** show `<1 tok/s` | `computeTokenSpeed` returns 0 when `durationMs < 500` |
+| Very short completed turns | **Last** / **Avg** show `—` | `computeTokenTpotMs` returns undefined when `generationMs < 500` |
+| Single-token output | TPOT undefined | Returns `undefined` → displays `—` |
 
 > **Polling strategy:** Adaptive `setTimeout` (1s active / 3s idle), complemented by `message.part.updated` event-driven wake-up. Very lightweight — idle ticks only update the phase indicator (`·`).
 
-**`—` usage (aligned with §2):** **Now** idle is `·`; `—` is for metrics without reliable data (e.g. TTFT), not streaming idle.
+**`—` usage (aligned with §2):** **Now** idle is `·`; `—` is for metrics without reliable data (e.g. TTFT, single-token TPOT), not streaming idle.
 
 ---
 
@@ -133,12 +149,13 @@ Placement: between **Detail** and **Model** sections.
 
 ```
 start = firstPartTime (> created) ?? msg.time.created
-speed ≈ (text.length / 4) / ((now - start) / 1000)
+speed ≈ (text.length / 4) / ((now - start) / 1000)   // tok/s
+display = 1000 / speed                                 // → ms/tok
 ```
 
 **Denominator choice:** When `firstPartTime` is tracked (same hybrid TTFT tracker as timeline / **TTFT** row), the denominator starts at first token — **Now** reflects generation speed, excluding TTFT wait. Falls back to `msg.time.created` until the first stream part is recorded.
 
-**Semantics:** This is a **turn-average since first output**, not an instantaneous rate.
+**Semantics:** This is a **turn-average since first output**, not an instantaneous rate. Displayed as ms/tok for consistency with TPOT.
 
 **Why this default**
 

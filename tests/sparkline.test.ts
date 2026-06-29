@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { formatSparkline, collectSpeedValues } from "../src/sparkline.ts"
+import { formatSparkline, collectSpeedValues, collectTpotValues } from "../src/sparkline.ts"
 
 describe("formatSparkline", () => {
   test("empty array returns empty string", () => {
@@ -70,5 +70,48 @@ describe("collectSpeedValues", () => {
       { durationMs: 1000, output: 300 },
     ]
     expect(collectSpeedValues(records, 2)).toEqual([200, 300])
+  })
+})
+
+describe("collectTpotValues", () => {
+  test("empty records returns empty array", () => {
+    expect(collectTpotValues([])).toEqual([])
+  })
+
+  test("skips records without durationMs", () => {
+    expect(collectTpotValues([{ output: 100 }])).toEqual([])
+  })
+
+  test("skips records with tokens <= 1", () => {
+    expect(collectTpotValues([{ durationMs: 1000, output: 1 }])).toEqual([])
+    expect(collectTpotValues([{ durationMs: 1000, output: 0, reasoning: 1 }])).toEqual([])
+    expect(collectTpotValues([{ durationMs: 1000, output: 0 }])).toEqual([])
+  })
+
+  test("skips records with durationMs < 500", () => {
+    expect(collectTpotValues([{ durationMs: 400, output: 100 }])).toEqual([])
+  })
+
+  test("computes TPOT for valid records", () => {
+    // 100 tokens, 1000ms → 1000 / (100 - 1) = 10.101...
+    const result = collectTpotValues([{ durationMs: 1000, output: 100 }])
+    expect(result).toHaveLength(1)
+    expect(result[0]).toBeCloseTo(10.101, 2)
+  })
+
+  test("includes reasoning tokens", () => {
+    // 150 tokens (100+50), 1000ms → 1000 / 149 = 6.711...
+    const result = collectTpotValues([{ durationMs: 1000, output: 100, reasoning: 50 }])
+    expect(result).toHaveLength(1)
+    expect(result[0]).toBeCloseTo(6.711, 2)
+  })
+
+  test("respects maxPoints parameter", () => {
+    const records = [
+      { durationMs: 1000, output: 100 },
+      { durationMs: 1000, output: 200 },
+      { durationMs: 1000, output: 300 },
+    ]
+    expect(collectTpotValues(records, 2)).toHaveLength(2)
   })
 })

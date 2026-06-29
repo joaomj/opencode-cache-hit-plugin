@@ -8,7 +8,6 @@ import { formatTokenCount } from "./format-tokens.ts"
 import { formatSubAgentLabel, modelRowColor } from "./format-model.ts"
 import { TuiMetricRow, type PanelLayout } from "./tui-panel/index.ts"
 import type { ProviderInfo, SubAgentSummary } from "./types.ts"
-import { formatTokenSpeed } from "./token-speed.ts"
 
 function subHasActivity(sub: SubAgentSummary): boolean {
   return sub.cost > 0 || sub.cacheRead > 0 || sub.cacheWrite > 0 || sub.input > 0
@@ -19,6 +18,7 @@ export function AgentsView(props: {
   layout: PanelLayout
   providers: ReadonlyArray<ProviderInfo>
   formatCost: (n: number) => string
+  formatSpeed: (v: number | undefined) => string
 }) {
   const { m, layout } = props
   const total = () => aggregateSubAgents(m.subs())
@@ -62,12 +62,12 @@ export function AgentsView(props: {
               labelFg={modelRowColor(sub.model, sub.providerID, m.pal())}
               valueFg={m.pal().muted}
             />
-            <Show when={sub.speed && sub.speed > 0}>
+            <Show when={sub.speed !== undefined}>
               <TuiMetricRow
                 pal={m.pal()}
                 layout={layout}
                 label="    "
-                value={formatTokenSpeed(sub.speed)}
+                value={props.formatSpeed(sub.speed)}
                 fg={m.pal().muted}
               />
             </Show>

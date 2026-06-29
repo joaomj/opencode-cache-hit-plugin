@@ -5,7 +5,8 @@
   "rate": 6.77,
   "display": {
     "lang": "en",
-    "panelBorder": true
+    "panelBorder": true,
+    "speedUnit": "tpot"
   },
   "timeline": {
     "enabled": false,

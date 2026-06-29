@@ -35,6 +35,9 @@ export function assistantMessageToRecord(
   firstPartTime?: number,
   ttftSource?: "sdk" | "tui",
   toolDurations?: ToolDurationRecord[],
+  itlP50?: number,
+  itlP90?: number,
+  itlCount?: number,
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
@@ -42,12 +45,17 @@ export function assistantMessageToRecord(
   const t = msg.tokens ?? {}
   const skippedForHit = msg.summary === true
   const output = t.output ?? 0
+  const reasoning = t.reasoning ?? 0
+  const tokens = output + reasoning
   const ttftMs = firstPartTime !== undefined && firstPartTime > timing.created
     ? firstPartTime - timing.created
     : undefined
   const genTimeMs = generationDurationMs(timing, firstPartTime)
-  const tps = genTimeMs !== undefined && genTimeMs > 0 && output > 0
-    ? (output / genTimeMs) * 1000
+  const tps = genTimeMs !== undefined && genTimeMs > 0 && tokens > 0
+    ? (tokens / genTimeMs) * 1000
+    : undefined
+  const tpot = genTimeMs !== undefined && genTimeMs >= 500 && tokens > 1
+    ? genTimeMs / (tokens - 1)
     : undefined
   return {
     schema: 1,
@@ -72,6 +80,10 @@ export function assistantMessageToRecord(
     ttftMs,
     ttftSource,
     tps,
+    tpot,
+    itlP50,
+    itlP90,
+    itlCount,
     finish: msg.finish,
     toolDurations,
   }

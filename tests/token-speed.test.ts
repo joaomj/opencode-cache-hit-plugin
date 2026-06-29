@@ -4,6 +4,9 @@ import {
   computeAvgTokenSpeed,
   formatTokenSpeed,
   estimateStreamingSpeed,
+  computeTokenTpotMs,
+  computeAvgTokenTpotMs,
+  formatTokenTpot,
 } from "../src/token-speed.ts"
 import {
   advanceStreamingNow,
@@ -112,6 +115,106 @@ describe("computeAvgTokenSpeed", () => {
     expect(withoutTtft).toBeGreaterThan(withTtft)
     expect(withoutTtft).toBe(100)
     expect(withTtft).toBe(25)
+  })
+})
+
+describe("computeTokenTpotMs", () => {
+  test("returns undefined for generationMs < 500", () => {
+    expect(computeTokenTpotMs(100, 50, 400)).toBeUndefined()
+  })
+
+  test("returns undefined when tokens <= 1", () => {
+    expect(computeTokenTpotMs(1, 0, 1000)).toBeUndefined()
+    expect(computeTokenTpotMs(0, 1, 1000)).toBeUndefined()
+    expect(computeTokenTpotMs(0, 0, 1000)).toBeUndefined()
+  })
+
+  test("computes TPOT for valid input", () => {
+    expect(computeTokenTpotMs(100, 50, 1500)).toBeCloseTo(10.067, 2)
+  })
+
+  test("includes reasoning tokens in numerator", () => {
+    expect(computeTokenTpotMs(100, 100, 1000)).toBeCloseTo(5.025, 2)
+  })
+
+  test("handles output only (no reasoning)", () => {
+    expect(computeTokenTpotMs(100, 0, 1000)).toBeCloseTo(10.101, 2)
+  })
+})
+
+describe("computeAvgTokenTpotMs", () => {
+  test("returns undefined for empty messages", () => {
+    expect(computeAvgTokenTpotMs([])).toBeUndefined()
+  })
+
+  test("skips messages without time.completed", () => {
+    const msgs = [{ tokens: { output: 100 }, time: { created: 0 } }]
+    expect(computeAvgTokenTpotMs(msgs)).toBeUndefined()
+  })
+
+  test("skips summary messages", () => {
+    const msgs = [
+      { summary: true, tokens: { output: 100 }, time: { created: 0, completed: 1000 } },
+    ]
+    expect(computeAvgTokenTpotMs(msgs)).toBeUndefined()
+  })
+
+  test("skips messages with duration < 500ms", () => {
+    const msgs = [{ tokens: { output: 100 }, time: { created: 0, completed: 400 } }]
+    expect(computeAvgTokenTpotMs(msgs)).toBeUndefined()
+  })
+
+  test("skips messages with tokens <= 1", () => {
+    const msgs = [{ tokens: { output: 1, reasoning: 0 }, time: { created: 0, completed: 1000 } }]
+    expect(computeAvgTokenTpotMs(msgs)).toBeUndefined()
+  })
+
+  test("computes weighted average for valid messages", () => {
+    const msgs = [
+      { tokens: { output: 100, reasoning: 0 }, time: { created: 0, completed: 1000 } },
+      { tokens: { output: 200, reasoning: 0 }, time: { created: 0, completed: 1000 } },
+    ]
+    expect(computeAvgTokenTpotMs(msgs)).toBeCloseTo(6.711, 2)
+  })
+
+  test("includes reasoning tokens", () => {
+    const msgs = [
+      { tokens: { output: 100, reasoning: 50 }, time: { created: 0, completed: 1000 } },
+    ]
+    expect(computeAvgTokenTpotMs(msgs)).toBeCloseTo(6.711, 2)
+  })
+
+  test("excludes TTFT when firstPartTime map is provided", () => {
+    const msgs = [
+      { id: "m1", tokens: { output: 100, reasoning: 0 }, time: { created: 0, completed: 4000 } },
+    ]
+    const withoutTtft = computeAvgTokenTpotMs(msgs)
+    const withTtft = computeAvgTokenTpotMs(msgs, new Map([["m1", 3000]]))
+    expect(withoutTtft!).toBeGreaterThan(withTtft!)
+    expect(withoutTtft).toBeCloseTo(40.404, 2)
+    expect(withTtft).toBeCloseTo(10.101, 2)
+  })
+})
+
+describe("formatTokenTpot", () => {
+  test("formats undefined as em-dash", () => {
+    expect(formatTokenTpot(undefined)).toBe("—")
+  })
+
+  test("formats < 1 as '<1 ms/tok'", () => {
+    expect(formatTokenTpot(0.5)).toBe("<1 ms/tok")
+  })
+
+  test("formats zero as '<1 ms/tok'", () => {
+    expect(formatTokenTpot(0)).toBe("<1 ms/tok")
+  })
+
+  test("formats normal value rounded", () => {
+    expect(formatTokenTpot(48.7)).toBe("49 ms/tok")
+  })
+
+  test("formats >= 1000 as seconds", () => {
+    expect(formatTokenTpot(1500)).toBe("1.5s/tok")
   })
 })
 
@@ -249,11 +352,19 @@ describe("formatStreamingNowDisplay", () => {
     expect(formatStreamingNowDisplay("idle", 0, "·")).toEqual({ value: "·", tone: "idle" })
   })
 
-  test("warmup shows sub-1 tok/s with live tone", () => {
-    expect(formatStreamingNowDisplay("warmup", 0, "·")).toEqual({ value: "<1 tok/s", tone: "live" })
+  test("warmup shows em-dash with live tone", () => {
+    expect(formatStreamingNowDisplay("warmup", 0, "·")).toEqual({ value: "—", tone: "live" })
   })
 
-  test("hold uses fading tone", () => {
-    expect(formatStreamingNowDisplay("hold", 23, "·")).toEqual({ value: "23 tok/s", tone: "fading" })
+  test("active converts speed to ms/tok with ~ estimate prefix", () => {
+    expect(formatStreamingNowDisplay("active", 20, "·")).toEqual({ value: "~50 ms/tok", tone: "live" })
+  })
+
+  test("hold converts speed to ms/tok with fading tone and ~ estimate prefix", () => {
+    expect(formatStreamingNowDisplay("hold", 25, "·")).toEqual({ value: "~40 ms/tok", tone: "fading" })
+  })
+
+  test("active with zero speed shows em-dash", () => {
+    expect(formatStreamingNowDisplay("active", 0, "·")).toEqual({ value: "—", tone: "live" })
   })
 })

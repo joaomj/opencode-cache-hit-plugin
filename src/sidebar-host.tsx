@@ -10,6 +10,7 @@ import {
   STREAM_PART_TYPES,
 } from "./first-part-time.ts"
 import { createToolTimingTracker, type ToolPartEventData } from "./tool-timing.ts"
+import { createItlTracker } from "./itl-tracker.ts"
 import { isPartUpdatedEvent } from "./types.ts"
 import type {
   AssistantMessage,
@@ -27,7 +28,7 @@ import {
 } from "./stats.ts"
 import { createChildSessionSync } from "./child-session-sync.ts"
 import { loadPluginConfig } from "./load-config.ts"
-import { computeAvgTokenSpeed } from "./token-speed.ts"
+import { computeAvgTokenTpotMs, computeAvgTokenSpeed } from "./token-speed.ts"
 import {
   advanceStreamingNow,
   initialStreamingTickState,
@@ -78,12 +79,15 @@ export function CacheHitSidebarHost(props: {
   })
   onCleanup(() => toolTiming.dispose())
 
+  const itlTracker = createItlTracker()
+
   const timeline = createTimelineCollector({
     getConfig: () => timelineConfig(),
     getRootSessionId: () => props.sessionId,
     getChildIds: childIds,
     firstPartTime: firstPartTracker,
     toolTiming,
+    itlTracker,
   })
   onCleanup(() => timeline.dispose())
 
@@ -126,6 +130,7 @@ export function CacheHitSidebarHost(props: {
 
   const subAgentList = createMemo(() => {
     void refreshTick()
+    const useTps = display().speedUnit === "tps"
     return childIds()
       .map((cid) => {
         const session = props.api.state.session.get?.(cid)
@@ -134,7 +139,9 @@ export function CacheHitSidebarHost(props: {
           if (subAgentHasStats(snap)) {
             const msgs = props.api.state.session.messages(cid) as AssistantMessage[] | undefined
             const merged = msgs ? withModelFallback(snap, msgs) : snap
-            const speed = msgs ? computeAvgTokenSpeed(msgs) : 0
+            const speed = msgs
+              ? (useTps ? computeAvgTokenSpeed(msgs) || undefined : computeAvgTokenTpotMs(msgs))
+              : undefined
             return toSubAgentSummary(cid, merged, speed)
           }
         }
@@ -142,7 +149,9 @@ export function CacheHitSidebarHost(props: {
         if (!msgs?.length) return null
         const snap = aggregateSessionFromMessages(msgs as AssistantMessage[])
         if (!subAgentHasStats(snap)) return null
-        const speed = computeAvgTokenSpeed(msgs as AssistantMessage[])
+        const speed = useTps
+          ? computeAvgTokenSpeed(msgs as AssistantMessage[]) || undefined
+          : computeAvgTokenTpotMs(msgs as AssistantMessage[])
         return toSubAgentSummary(cid, snap, speed)
       })
       .filter(Boolean) as SubAgentSummary[]
@@ -215,6 +224,7 @@ export function CacheHitSidebarHost(props: {
     timeline.resetForRootChange()
     firstPartTracker.reset()
     toolTiming.reset()
+    itlTracker.reset()
     streamingTickState = initialStreamingTickState()
     setStreamingNow({ phase: "idle", speed: 0 })
     if (sid) {
@@ -269,6 +279,7 @@ export function CacheHitSidebarHost(props: {
       // fallback when SDK-side part.time.start is unavailable (message.part.updated).
       if (typeof messageID === "string" && typeof field === "string" && STREAM_PART_TYPES.has(field)) {
         const recorded = recordPart(messageID, field, Date.now(), "tui")
+        itlTracker.trackChunk(messageID)
         if (recorded) trackStreaming()
       }
     })

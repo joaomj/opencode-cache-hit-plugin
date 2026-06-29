@@ -114,7 +114,9 @@ Supported display currencies in config: `USD`, `CNY`, `EUR`, `GBP`, `JPY` (see `
 ```json
 "display": {
   "lang": "en",
-  "panelBorder": true
+  "panelBorder": true,
+  "showSpeed": true,
+  "speedUnit": "tpot"
 }
 ```
 
@@ -123,6 +125,8 @@ Supported display currencies in config: `USD`, `CNY`, `EUR`, `GBP`, `JPY` (see `
 | `lang` | `"en"` | `en` / `zh` / `auto` |
 | `panelBorder` | `true` | Border/padding |
 | `mainHitLabel` | (i18n) | Optional override for the Hit row label |
+| `showSpeed` | `true` | Show/hide speed section |
+| `speedUnit` | `"tpot"` | `"tpot"` (ms/tok) or `"tps"` (tok/s) |
 
 **Agents** totals sum **child sessions only**, not the main session (see `agentsScopeHint`). Main session metrics stay in the block above; collapse **Agents** to save space. Per-child rows use the same model slug as the main **Model** line (truncated when the sidebar is narrow); see [docs/en/design.md](docs/en/design.md) § Sub-agent row display.
 

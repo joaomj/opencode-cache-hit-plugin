@@ -1,5 +1,5 @@
 import type { AssistantMessage } from "./types.ts"
-import { estimateStreamingSpeed, formatTokenSpeed } from "./token-speed.ts"
+import { estimateStreamingSpeed, formatTokenTpot } from "./token-speed.ts"
 import { STREAM_PART_TYPES } from "./first-part-time.ts"
 
 export type StreamingPhase = "idle" | "warmup" | "active" | "hold"
@@ -29,11 +29,15 @@ export function formatStreamingNowDisplay(
     case "idle":
       return { value: idleLabel, tone: "idle" }
     case "warmup":
-      return { value: formatTokenSpeed(0), tone: "live" }
-    case "active":
-      return { value: formatTokenSpeed(speed), tone: "live" }
-    case "hold":
-      return { value: formatTokenSpeed(speed), tone: "fading" }
+      return { value: formatTokenTpot(undefined), tone: "live" }
+    case "active": {
+      const val = formatTokenTpot(speed > 0 ? 1000 / speed : undefined)
+      return { value: val !== "—" ? "~" + val : val, tone: "live" }
+    }
+    case "hold": {
+      const val = formatTokenTpot(speed > 0 ? 1000 / speed : undefined)
+      return { value: val !== "—" ? "~" + val : val, tone: "fading" }
+    }
   }
 }
 

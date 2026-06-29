@@ -56,7 +56,11 @@ export type LlmCallRecord = {
   skippedForHit: boolean   // compaction / summary
   ttftMs?: number          // Time To First Token (firstPartTime - created)
   ttftSource?: "sdk" | "tui"  // TTFT data source
-  tps?: number             // Tokens Per Second (output / genTime * 1000)
+  tps?: number             // Tokens Per Second ((output + reasoning) / genTime * 1000)
+  tpot?: number            // Time Per Output Token in ms (genTime / (output + reasoning - 1))
+  itlP50?: number          // Inter-Token Latency P50 (ms)
+  itlP90?: number          // Inter-Token Latency P90 (ms)
+  itlCount?: number        // Number of inter-chunk intervals sampled
   finish?: string          // Finish reason (e.g., "stop", "tool-calls", "error")
   toolDurations?: ToolDurationRecord[]  // from src/tool-timing.ts
 }
@@ -319,7 +323,8 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 |--------|------|
 | `message-timing.ts` | `created` / `completed` |
 | `first-part-time.ts` | TTFT tracker (sidebar + JSONL input) |
-| `token-speed.ts` | Pure speed calculations (`computeTokenSpeed`, `computeAvgTokenSpeed`) |
+| `itl-tracker.ts` | ITL chunk-interval tracker (sidebar events → JSONL quantiles) |
+| `token-speed.ts` | Pure speed/TPOT calculations (`computeTokenSpeed`, `computeAvgTokenSpeed`, `computeTokenTpotMs`, `computeAvgTokenTpotMs`) |
 | `streaming-state.ts` | Streaming phase state machine (`advanceStreamingNow`) |
 | `stats.ts` | shared per-message hit % |
 | `sidebar-host.tsx` | `createFirstPartTimeTracker`, `createTimelineCollector` |
@@ -331,6 +336,7 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 |------|------|
 | `assistantMessageToRecord` | `tests/timeline-records.test.ts` |
 | first-part tracker | `tests/first-part-time.test.ts` |
+| ITL tracker | `tests/itl-tracker.test.ts` |
 | writer / rotation / purge | `tests/timeline-writer.test.ts`, `timeline-rotation.test.ts` |
 | collector | `tests/timeline-collector.test.ts` |
 
@@ -347,5 +353,5 @@ Default log dir matches `timeline.dir` in plugin config (`~/.local/share/opencod
 ## Example line
 
 ```json
-{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"sdk","tps":8.83,"finish":"stop"}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"sdk","tps":8.83,"tpot":114.63,"itlP50":12,"itlP90":15,"itlCount":5,"finish":"stop"}
 ```

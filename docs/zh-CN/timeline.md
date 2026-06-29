@@ -63,7 +63,11 @@ export type LlmCallRecord = {
   skippedForHit: boolean
   ttftMs?: number          // 首 Token 延迟（firstPartTime - created）
   ttftSource?: "sdk" | "tui"  // TTFT 数据来源
-  tps?: number             // 每秒 Token 数（output / genTime * 1000）
+  tps?: number             // 每秒 Token 数（(output + reasoning) / genTime * 1000）
+  tpot?: number            // 每个输出 Token 耗时（毫秒）(genTime / (output + reasoning - 1))
+  itlP50?: number          // 流式 chunk 间延迟 P50（毫秒）
+  itlP90?: number          // 流式 chunk 间延迟 P90（毫秒）
+  itlCount?: number        // 采样的 chunk 间隔数
   finish?: string          // 完成原因（如 "stop", "tool-calls", "error"）
   toolDurations?: ToolDurationRecord[]  // 来自 src/tool-timing.ts
 }
@@ -341,7 +345,8 @@ bun scripts/timeline-dashboard.ts --open
 |------|------|
 | `message-timing.ts` | 提供 `created` / `completed` / `formatTimingShort` |
 | `first-part-time.ts` | TTFT tracker（侧边栏 + JSONL 共用） |
-| `token-speed.ts` | 纯速度计算（`computeTokenSpeed`、`computeAvgTokenSpeed`） |
+| `itl-tracker.ts` | ITL chunk 间隔 tracker（侧边栏事件 → JSONL 分位数） |
+| `token-speed.ts` | 纯速度/TPOT 计算（`computeTokenSpeed`、`computeAvgTokenSpeed`、`computeTokenTpotMs`、`computeAvgTokenTpotMs`） |
 | `streaming-state.ts` | 流式 phase 状态机（`advanceStreamingNow`） |
 | `stats.ts` | 抽出共享 `perMessageHitPercent(msg)`，供 `computePerCallHitTrend` 与 `assistantMessageToRecord` 共用 |
 | `sidebar-host.tsx` | `createFirstPartTimeTracker`（始终）；`createTimelineCollector`（enabled 时落盘） |
@@ -353,6 +358,7 @@ bun scripts/timeline-dashboard.ts --open
 |------|------|
 | `assistantMessageToRecord` 字段与 hitPercent | `tests/timeline-records.test.ts` |
 | first-part tracker | `tests/first-part-time.test.ts` |
+| ITL tracker | `tests/itl-tracker.test.ts` |
 | 合成 `messageKey`、完成才 flush | `tests/timeline-writer.test.ts`（临时目录） |
 | collector 注入 tracker | `tests/timeline-collector.test.ts` |
 
@@ -377,7 +383,7 @@ bun scripts/timeline-dashboard.ts --open
 ## 示例 JSONL 行
 
 ```json
-{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"sdk","tps":8.83,"finish":"stop"}
+{"schema":1,"recordedAt":"2024-05-30T08:00:00.000+08:00","sessionId":"sess_main","rootSessionId":"sess_main","scope":"main","messageKey":"sess_main:m1","modelId":"deepseek/v4","created":"2024-05-30T07:59:50.000+08:00","completedAt":"2024-05-30T08:00:00.000+08:00","durationMs":10000,"isComplete":true,"input":1200,"output":80,"reasoning":0,"cacheRead":38000,"cacheWrite":0,"cost":0.012,"hitPercent":96.9,"skippedForHit":false,"ttftMs":944,"ttftSource":"sdk","tps":8.83,"tpot":114.63,"itlP50":12,"itlP90":15,"itlCount":5,"finish":"stop"}
 ```
 
 ---

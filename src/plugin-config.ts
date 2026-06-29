@@ -12,12 +12,15 @@ export type DisplayConfig = {
   agentsBorder?: boolean
   /** Show token speed section. Default true. */
   showSpeed: boolean
+  /** Speed display unit. Default "tpot". */
+  speedUnit: "tpot" | "tps"
 }
 
 export const DEFAULT_DISPLAY: DisplayConfig = {
   lang: "en",
   panelBorder: true,
   showSpeed: true,
+  speedUnit: "tpot",
 }
 
 export type ToolSummaryConfig = {
@@ -179,6 +182,7 @@ export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
   if (typeof o.panelBorder === "boolean") d.panelBorder = o.panelBorder
   else if (typeof o.agentsBorder === "boolean") d.panelBorder = o.agentsBorder
   if (typeof o.showSpeed === "boolean") d.showSpeed = o.showSpeed
+  if (o.speedUnit === "tps" || o.speedUnit === "tpot") d.speedUnit = o.speedUnit
   return d
 }
 

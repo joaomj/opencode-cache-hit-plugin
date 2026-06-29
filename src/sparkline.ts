@@ -26,19 +26,34 @@ export function formatSparkline(values: number[], width: number = 7): string {
 
 /**
  * Collect speed values from timeline JSONL data.
- * @param records - Array of { durationMs, output } from timeline
+ * @param records - Array of { durationMs, output, reasoning } from timeline
  * @param maxPoints - Maximum number of data points (default: 7)
- * @returns Array of speed values (tok/s)
+ * @returns Array of speed values (tok/s), numerator includes reasoning
  */
 export function collectSpeedValues(
-  records: Array<{ durationMs?: number; output?: number }>,
+  records: Array<{ durationMs?: number; output?: number; reasoning?: number }>,
   maxPoints: number = 7,
 ): number[] {
   const speeds: number[] = []
   for (const rec of records) {
-    if (!rec.durationMs || !rec.output || rec.durationMs < 500) continue
-    const speed = (rec.output / rec.durationMs) * 1000
+    const tokens = (rec.output ?? 0) + (rec.reasoning ?? 0)
+    if (!rec.durationMs || !tokens || rec.durationMs < 500) continue
+    const speed = (tokens / rec.durationMs) * 1000
     if (speed > 0) speeds.push(speed)
   }
   return speeds.slice(-maxPoints)
+}
+
+export function collectTpotValues(
+  records: Array<{ durationMs?: number; output?: number; reasoning?: number }>,
+  maxPoints: number = 7,
+): number[] {
+  const values: number[] = []
+  for (const rec of records) {
+    const tokens = (rec.output ?? 0) + (rec.reasoning ?? 0)
+    if (!rec.durationMs || tokens <= 1 || rec.durationMs < 500) continue
+    const tpot = rec.durationMs / (tokens - 1)
+    if (tpot > 0) values.push(tpot)
+  }
+  return values.slice(-maxPoints)
 }

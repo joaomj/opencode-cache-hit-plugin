@@ -19,9 +19,18 @@ import {
   shortModelName,
 } from "./stats.ts"
 import { computePricing, type PricingInfo } from "./pricing.ts"
-import { computeAvgTokenSpeed, computeTokenSpeed, formatTokenSpeed } from "./token-speed.ts"
+import {
+  computeAvgTokenTpotMs,
+  computeTokenTpotMs,
+  formatTokenTpot,
+} from "./token-speed.ts"
+import {
+  computeAvgTokenSpeed,
+  computeTokenSpeed,
+  formatTokenSpeed,
+} from "./token-speed.ts"
 import { generationDurationMs, timingFromAssistantMessage } from "./message-timing.ts"
-import { formatSparkline, collectSpeedValues } from "./sparkline.ts"
+import { formatSparkline, collectTpotValues, collectSpeedValues } from "./sparkline.ts"
 
 function activeLang(display: DisplayConfig) {
   return display.lang === "auto" ? resolveLang("auto") : display.lang
@@ -81,6 +90,8 @@ export function useCacheHitMetrics(props: {
     return { text: right, width: visualWidth(right) }
   })
 
+  const useTps = createMemo(() => props.display.speedUnit === "tps")
+
   const lastSpeed = createMemo(() => {
     const msgs = props.messages()
     const firstPartTime = props.firstPartTime()
@@ -95,14 +106,21 @@ export function useCacheHitMetrics(props: {
       const firstTime = msgID ? firstPartTime.get(msgID) : undefined
       const durationMs = generationDurationMs(timing, firstTime)
       if (durationMs === undefined) continue
-      return computeTokenSpeed(output, reasoning, durationMs)
+      const v = useTps()
+        ? computeTokenSpeed(output, reasoning, durationMs)
+        : computeTokenTpotMs(output, reasoning, durationMs)
+      return v === 0 ? undefined : v
     }
-    return 0
+    return undefined
   })
 
-  const avgSpeed = createMemo(() =>
-    computeAvgTokenSpeed(props.messages(), props.firstPartTime()),
-  )
+  const avgSpeed = createMemo(() => {
+    if (useTps()) {
+      const v = computeAvgTokenSpeed(props.messages(), props.firstPartTime())
+      return v === 0 ? undefined : v
+    }
+    return computeAvgTokenTpotMs(props.messages(), props.firstPartTime())
+  })
 
   const speedValues = createMemo(() => {
     const msgs = props.messages()
@@ -115,11 +133,20 @@ export function useCacheHitMetrics(props: {
         const firstTime = msgID ? firstPartTime.get(msgID) : undefined
         return {
           durationMs: timing ? generationDurationMs(timing, firstTime) : undefined,
-          output: (msg.tokens?.output ?? 0) + (msg.tokens?.reasoning ?? 0),
+          output: msg.tokens?.output ?? 0,
+          reasoning: msg.tokens?.reasoning ?? 0,
         }
       })
-    return collectSpeedValues(records)
+    return useTps() ? collectSpeedValues(records) : collectTpotValues(records)
   })
+
+  const lastSpeedLabel = createMemo(() =>
+    useTps() ? formatTokenSpeed(lastSpeed() ?? 0) : formatTokenTpot(lastSpeed()),
+  )
+
+  const avgSpeedLabel = createMemo(() =>
+    useTps() ? formatTokenSpeed(avgSpeed() ?? 0) : formatTokenTpot(avgSpeed()),
+  )
 
   const sparkline = createMemo(() => formatSparkline(speedValues()))
 
@@ -167,9 +194,9 @@ export function useCacheHitMetrics(props: {
     totalSubCost: createMemo(() => subs().reduce((s, a) => s + a.cost, 0)),
     collapsedHitSummary,
     lastSpeed,
-    lastSpeedLabel: createMemo(() => formatTokenSpeed(lastSpeed())),
+    lastSpeedLabel,
     avgSpeed,
-    avgSpeedLabel: createMemo(() => formatTokenSpeed(avgSpeed())),
+    avgSpeedLabel,
     sparkline,
     lastTtft,
     lastTtftLabel,

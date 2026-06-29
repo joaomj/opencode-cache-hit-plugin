@@ -155,4 +155,83 @@ describe("assistantMessageToRecord", () => {
     expect(rec).not.toBeNull()
     expect(rec!.toolDurations).toBeUndefined()
   })
+
+  test("TPOT calculated when tokens > 1 and genTime >= 500ms", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 3000 },
+      tokens: { input: 10, output: 20, reasoning: 30 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500)
+    expect(rec).not.toBeNull()
+    expect(rec!.tpot).toBeCloseTo(30.612, 2)
+  })
+
+  test("TPOT includes reasoning in token count", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 2000 },
+      tokens: { input: 10, output: 10, reasoning: 10 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000)
+    expect(rec).not.toBeNull()
+    expect(rec!.tpot).toBeCloseTo(52.632, 2)
+  })
+
+  test("TPOT undefined when tokens <= 1", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 3000 },
+      tokens: { input: 10, output: 1 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500)
+    expect(rec).not.toBeNull()
+    expect(rec!.tpot).toBeUndefined()
+  })
+
+  test("TPOT undefined when genTime < 500ms", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 1300 },
+      tokens: { input: 10, output: 20 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000)
+    expect(rec).not.toBeNull()
+    expect(rec!.tpot).toBeUndefined()
+  })
+
+  test("TPS includes reasoning tokens", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 3000 },
+      tokens: { input: 10, output: 20, reasoning: 30 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500)
+    expect(rec).not.toBeNull()
+    expect(rec!.tps).toBeCloseTo(33.33, 1)
+  })
+
+  test("TPOT and TPS both undefined when output and reasoning are 0", () => {
+    const msg = {
+      role: "assistant",
+      id: "m1",
+      modelID: "gpt-4",
+      time: { created: 1000, completed: 3000 },
+      tokens: { input: 10, output: 0, reasoning: 0 },
+    }
+    const rec = assistantMessageToRecord(msg, "s1", "root", "main", 5000, 1500)
+    expect(rec).not.toBeNull()
+    expect(rec!.tpot).toBeUndefined()
+    expect(rec!.tps).toBeUndefined()
+  })
 })
