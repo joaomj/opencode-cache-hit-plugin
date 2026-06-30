@@ -25,4 +25,15 @@ describe("load-config paths", () => {
     const cfg = loadPluginConfig()
     expect(cfg.display.lang).toBeTruthy()
   })
+
+  test("cloneDefault includes cacheTTL — regression for crash on config.providers access", () => {
+    // When no config file is present, loadPluginConfig() falls through to cloneDefault().
+    // Previously cacheTTL was omitted from cloneDefault(), causing a TUI crash:
+    //   TypeError: undefined is not an object (evaluating 'config.providers')
+    // in CacheTTLView > getTTL.
+    const cfg = loadPluginConfig()
+    expect(cfg.cacheTTL).toBeDefined()
+    expect(cfg.cacheTTL.providers).toBeDefined()
+    expect(typeof cfg.cacheTTL.enabled).toBe("boolean")
+  })
 })

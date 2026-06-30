@@ -22,6 +22,7 @@ function cloneDefault(): PluginConfig {
     cost: { ...DEFAULT_PLUGIN_CONFIG.cost },
     display: { ...DEFAULT_PLUGIN_CONFIG.display },
     timeline: { ...DEFAULT_PLUGIN_CONFIG.timeline },
+    cacheTTL: { ...DEFAULT_PLUGIN_CONFIG.cacheTTL },
   }
 }
 
