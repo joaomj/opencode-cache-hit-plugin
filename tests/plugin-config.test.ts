@@ -6,6 +6,9 @@ import {
   normalizeCacheTTLConfig,
   isToolSummaryEnabled,
   parseDuration,
+  DEFAULT_PLUGIN_CONFIG,
+  DEFAULT_TIMELINE,
+  DEFAULT_CACHE_TTL,
 } from "../src/plugin-config.ts"
 
 describe("normalizeDisplayConfig", () => {
@@ -196,5 +199,34 @@ describe("normalizeCacheTTLConfig", () => {
   test("respects enabled flag", () => {
     const c = normalizeCacheTTLConfig({ enabled: false })
     expect(c.enabled).toBe(false)
+  })
+})
+
+describe("deep clone isolation", () => {
+  test("normalizePluginConfig(null) does not share nested refs with DEFAULT_PLUGIN_CONFIG", () => {
+    const cfg = normalizePluginConfig(null)
+    expect(cfg).not.toBe(DEFAULT_PLUGIN_CONFIG)
+    expect(cfg.cacheTTL).not.toBe(DEFAULT_PLUGIN_CONFIG.cacheTTL)
+    expect(cfg.cacheTTL.providers).not.toBe(DEFAULT_PLUGIN_CONFIG.cacheTTL.providers)
+    expect(cfg.timeline).not.toBe(DEFAULT_PLUGIN_CONFIG.timeline)
+    expect(cfg.timeline.toolSummary).not.toBe(DEFAULT_PLUGIN_CONFIG.timeline.toolSummary)
+  })
+
+  test("normalizeTimelineConfig(null) mutations do not pollute DEFAULT_TIMELINE", () => {
+    const t = normalizeTimelineConfig(null)
+    t.toolSummary = false
+    t.enabled = true
+
+    expect(DEFAULT_TIMELINE.toolSummary).toEqual({ allTools: true, bash: false })
+    expect(DEFAULT_TIMELINE.enabled).toBe(false)
+  })
+
+  test("normalizeCacheTTLConfig(null) mutations do not pollute DEFAULT_CACHE_TTL", () => {
+    const c = normalizeCacheTTLConfig(null)
+    c.providers["xai"] = "5m"
+    c.enabled = false
+
+    expect(DEFAULT_CACHE_TTL.providers).toEqual({})
+    expect(DEFAULT_CACHE_TTL.enabled).toBe(true)
   })
 })

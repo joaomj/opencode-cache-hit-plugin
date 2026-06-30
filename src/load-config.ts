@@ -17,13 +17,8 @@ export const XDG_CONFIG_PATH = join(homedir(), ".config", "opencode", "cache-hit
 /** Legacy config: plugin-root `cache-hit.config.json` (for npm cache / local installs). */
 export const CONFIG_PATH = join(PLUGIN_ROOT, "cache-hit.config.json")
 
-function cloneDefault(): PluginConfig {
-  return {
-    cost: { ...DEFAULT_PLUGIN_CONFIG.cost },
-    display: { ...DEFAULT_PLUGIN_CONFIG.display },
-    timeline: { ...DEFAULT_PLUGIN_CONFIG.timeline },
-    cacheTTL: { ...DEFAULT_PLUGIN_CONFIG.cacheTTL },
-  }
+export function cloneDefault(): PluginConfig {
+  return structuredClone(DEFAULT_PLUGIN_CONFIG)
 }
 
 function tryRead(path: string): PluginConfig | null {

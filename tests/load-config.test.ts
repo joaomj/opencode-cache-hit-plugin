@@ -1,7 +1,8 @@
 import { describe, test, expect } from "bun:test"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { CONFIG_PATH, PLUGIN_ROOT, XDG_CONFIG_PATH, loadPluginConfig } from "../src/load-config.ts"
+import { CONFIG_PATH, PLUGIN_ROOT, XDG_CONFIG_PATH, cloneDefault, loadPluginConfig } from "../src/load-config.ts"
+import { DEFAULT_PLUGIN_CONFIG } from "../src/plugin-config.ts"
 
 describe("load-config paths", () => {
   test("PLUGIN_ROOT is package root", () => {
@@ -27,13 +28,20 @@ describe("load-config paths", () => {
   })
 
   test("cloneDefault includes cacheTTL — regression for crash on config.providers access", () => {
-    // When no config file is present, loadPluginConfig() falls through to cloneDefault().
-    // Previously cacheTTL was omitted from cloneDefault(), causing a TUI crash:
-    //   TypeError: undefined is not an object (evaluating 'config.providers')
-    // in CacheTTLView > getTTL.
-    const cfg = loadPluginConfig()
+    const cfg = cloneDefault()
     expect(cfg.cacheTTL).toBeDefined()
     expect(cfg.cacheTTL.providers).toBeDefined()
     expect(typeof cfg.cacheTTL.enabled).toBe("boolean")
+  })
+
+  test("cloneDefault returns deep copy — mutations do not pollute DEFAULT_PLUGIN_CONFIG", () => {
+    const cfg = cloneDefault()
+    cfg.cacheTTL.providers["evil"] = "1m"
+    cfg.timeline.toolSummary = false
+    cfg.display.lang = "zh"
+
+    expect(DEFAULT_PLUGIN_CONFIG.cacheTTL.providers).toEqual({})
+    expect(DEFAULT_PLUGIN_CONFIG.timeline.toolSummary).toEqual({ allTools: true, bash: false })
+    expect(DEFAULT_PLUGIN_CONFIG.display.lang).toBe("en")
   })
 })

@@ -38,7 +38,7 @@ function resolveExchangeRate(cfg: CostDisplayConfig): number {
 }
 
 export function normalizeCostDisplay(raw: unknown): CostDisplayConfig {
-  if (!raw || typeof raw !== "object") return { ...DEFAULT_COST_DISPLAY }
+  if (!raw || typeof raw !== "object") return structuredClone(DEFAULT_COST_DISPLAY)
   const o = raw as Record<string, unknown>
   const currency =
     typeof o.currency === "string" && o.currency in CURRENCY_PRESETS

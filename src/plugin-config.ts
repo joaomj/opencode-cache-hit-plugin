@@ -140,7 +140,7 @@ export function isToolSummaryEnabled(setting: ToolSummarySetting, tool: string):
 }
 
 export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
-  const t = { ...DEFAULT_TIMELINE }
+  const t = structuredClone(DEFAULT_TIMELINE)
   if (!raw || typeof raw !== "object") return t
   const o = raw as Record<string, unknown>
   if (typeof o.enabled === "boolean") t.enabled = o.enabled
@@ -172,7 +172,7 @@ export function normalizeTimelineConfig(raw: unknown): TimelineConfig {
 }
 
 export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
-  const d = { ...DEFAULT_DISPLAY }
+  const d = structuredClone(DEFAULT_DISPLAY)
   if (!raw || typeof raw !== "object") return d
   const o = raw as Record<string, unknown>
   if (typeof o.lang === "string") {
@@ -187,7 +187,7 @@ export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
 }
 
 export function normalizeCacheTTLConfig(raw: unknown): CacheTTLConfig {
-  const t: CacheTTLConfig = { enabled: DEFAULT_CACHE_TTL.enabled, providers: {} }
+  const t = structuredClone(DEFAULT_CACHE_TTL)
   if (!raw || typeof raw !== "object") return t
   const o = raw as Record<string, unknown>
   if (typeof o.enabled === "boolean") t.enabled = o.enabled
@@ -231,7 +231,7 @@ export function parseDuration(raw: string): number | null {
 }
 
 export function normalizePluginConfig(raw: unknown): PluginConfig {
-  if (!raw || typeof raw !== "object") return { ...DEFAULT_PLUGIN_CONFIG }
+  if (!raw || typeof raw !== "object") return structuredClone(DEFAULT_PLUGIN_CONFIG)
   const o = raw as Record<string, unknown>
   const cost = normalizeCostDisplay(raw)
   const displayRaw = o.display
