@@ -31,7 +31,7 @@ export function MainSessionView(props: {
   const { m, layout } = props
   const streamingNowRow = createMemo(() => {
     const now = props.streamingNow()
-    return formatStreamingNowDisplay(now.phase, now.speed, m.t().streamingIdle)
+    return formatStreamingNowDisplay(now.phase, now.speed, m.t().streamingIdle, m.useTps())
   })
   return (
     <>

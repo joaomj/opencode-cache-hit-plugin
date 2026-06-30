@@ -193,6 +193,7 @@ export function useCacheHitMetrics(props: {
     modelShort: createMemo(() => shortModelName(main().model)),
     totalSubCost: createMemo(() => subs().reduce((s, a) => s + a.cost, 0)),
     collapsedHitSummary,
+    useTps,
     lastSpeed,
     lastSpeedLabel,
     avgSpeed,

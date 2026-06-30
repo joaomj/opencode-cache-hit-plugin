@@ -182,7 +182,10 @@ export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
   if (typeof o.panelBorder === "boolean") d.panelBorder = o.panelBorder
   else if (typeof o.agentsBorder === "boolean") d.panelBorder = o.agentsBorder
   if (typeof o.showSpeed === "boolean") d.showSpeed = o.showSpeed
-  if (o.speedUnit === "tps" || o.speedUnit === "tpot") d.speedUnit = o.speedUnit
+  if (typeof o.speedUnit === "string") {
+    const v = o.speedUnit.toLowerCase()
+    if (v === "tps" || v === "tpot") d.speedUnit = v
+  }
   return d
 }
 

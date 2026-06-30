@@ -1,5 +1,5 @@
 import type { AssistantMessage } from "./types.ts"
-import { estimateStreamingSpeed, formatTokenTpot } from "./token-speed.ts"
+import { estimateStreamingSpeed, formatTokenSpeed, formatTokenTpot } from "./token-speed.ts"
 import { STREAM_PART_TYPES } from "./first-part-time.ts"
 
 export type StreamingPhase = "idle" | "warmup" | "active" | "hold"
@@ -24,19 +24,29 @@ export function formatStreamingNowDisplay(
   phase: StreamingPhase,
   speed: number,
   idleLabel: string,
+  useTps = false,
 ): { value: string; tone: StreamingNowTone } {
+  const format = useTps
+    ? (spd: number | undefined) =>
+        spd !== undefined && spd > 0 ? formatTokenSpeed(spd) : "—"
+    : (spd: number | undefined) =>
+        formatTokenTpot(spd !== undefined && spd > 0 ? 1000 / spd : undefined)
+
+  const prefixEstimate = (val: string) =>
+    val !== "—" && !val.startsWith("<") ? "~" : ""
+
   switch (phase) {
     case "idle":
       return { value: idleLabel, tone: "idle" }
     case "warmup":
-      return { value: formatTokenTpot(undefined), tone: "live" }
+      return { value: format(undefined), tone: "live" }
     case "active": {
-      const val = formatTokenTpot(speed > 0 ? 1000 / speed : undefined)
-      return { value: val !== "—" ? "~" + val : val, tone: "live" }
+      const val = format(speed > 0 ? speed : undefined)
+      return { value: prefixEstimate(val) + val, tone: "live" }
     }
     case "hold": {
-      const val = formatTokenTpot(speed > 0 ? 1000 / speed : undefined)
-      return { value: val !== "—" ? "~" + val : val, tone: "fading" }
+      const val = format(speed > 0 ? speed : undefined)
+      return { value: prefixEstimate(val) + val, tone: "fading" }
     }
   }
 }

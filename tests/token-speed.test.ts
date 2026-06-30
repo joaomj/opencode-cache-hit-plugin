@@ -367,4 +367,24 @@ describe("formatStreamingNowDisplay", () => {
   test("active with zero speed shows em-dash", () => {
     expect(formatStreamingNowDisplay("active", 0, "·")).toEqual({ value: "—", tone: "live" })
   })
+
+  test("active with useTps shows tok/s with ~ estimate prefix", () => {
+    expect(formatStreamingNowDisplay("active", 20, "·", true)).toEqual({ value: "~20 tok/s", tone: "live" })
+  })
+
+  test("hold with useTps shows tok/s with fading tone", () => {
+    expect(formatStreamingNowDisplay("hold", 10, "·", true)).toEqual({ value: "~10 tok/s", tone: "fading" })
+  })
+
+  test("warmup with useTps shows em-dash with live tone", () => {
+    expect(formatStreamingNowDisplay("warmup", 0, "·", true)).toEqual({ value: "—", tone: "live" })
+  })
+
+  test("idle with useTps still shows idle label", () => {
+    expect(formatStreamingNowDisplay("idle", 0, "·", true)).toEqual({ value: "·", tone: "idle" })
+  })
+
+  test("active with useTps and speed < 1 omits ~ prefix", () => {
+    expect(formatStreamingNowDisplay("active", 0.3, "·", true)).toEqual({ value: "<1 tok/s", tone: "live" })
+  })
 })
