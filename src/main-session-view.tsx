@@ -46,10 +46,10 @@ export function MainSessionView(props: {
         }
       />
       <TuiMetricRow pal={m.pal()} layout={layout} label={m.t().totalHit} value={m.sessionPct()} />
-      <Show when={props.cacheTTL?.enabled && props.messages}>
+      <Show when={props.cacheTTL?.enabled && props.cacheTTL?.providers && props.messages}>
         <CacheTTLView
           messages={props.messages!}
-          config={props.cacheTTL!}
+          config={props.cacheTTL}
           pal={m.pal()}
           layout={layout}
           label={m.t().secTTL}

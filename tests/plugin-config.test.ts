@@ -200,6 +200,15 @@ describe("normalizeCacheTTLConfig", () => {
     const c = normalizeCacheTTLConfig({ enabled: false })
     expect(c.enabled).toBe(false)
   })
+
+  // Regression for #1/#3: normalize must always emit `providers`, even when the
+  // raw config supplies only `enabled`. A missing providers field is what crashed
+  // getTTL in stale-cached builds.
+  test("always emits providers even when raw omits it", () => {
+    const c = normalizeCacheTTLConfig({ enabled: true })
+    expect(c.providers).toBeDefined()
+    expect(c.providers).toEqual({})
+  })
 })
 
 describe("deep clone isolation", () => {

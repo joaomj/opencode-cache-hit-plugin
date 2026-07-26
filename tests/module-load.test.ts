@@ -15,4 +15,12 @@ describe("module load (import graph)", () => {
     const mod = await import("../src/format-cache-ui.ts")
     expect("computeHitBarWidth" in mod).toBe(false)
   })
+
+  test("cache-ttl resolves pure-logic named imports", async () => {
+    const mod = await import("../src/cache-ttl.ts")
+    expect(mod.getTTL).toBeTypeOf("function")
+    expect(mod.formatElapsed).toBeTypeOf("function")
+    expect(mod.DEFAULT_TTL_MS).toBeTypeOf("number")
+    expect(mod.BUILT_IN_TTL).toBeTypeOf("object")
+  })
 })

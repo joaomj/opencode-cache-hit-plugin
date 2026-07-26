@@ -6,27 +6,9 @@
 /** @jsxImportSource @opentui/solid */
 import { createMemo, createSignal, onCleanup, Show, type Accessor } from "solid-js"
 import type { AssistantMessage } from "./types.ts"
-import type { CacheTTLConfig } from "./plugin-config.ts"
-import { parseDuration } from "./plugin-config.ts"
+import { type CacheTTLConfig, DEFAULT_CACHE_TTL } from "./plugin-config.ts"
+import { getTTL, formatElapsed, DEFAULT_TTL_MS } from "./cache-ttl.ts"
 import type { PanelPalette, PanelLayout } from "./tui-panel/index.ts"
-
-const SECOND = 1000
-const MINUTE = 60 * SECOND
-const HOUR = 60 * MINUTE
-
-const DEFAULT_TTL_MS = 5 * MINUTE
-
-const BUILT_IN_TTL: Record<string, number> = {
-  anthropic: 5 * MINUTE,
-  openai: 5 * MINUTE,
-  deepseek: 2 * HOUR,
-  google: 1 * HOUR,
-  xai: 5 * MINUTE,
-  minimax: 5 * MINUTE,
-  xiaomi: 5 * MINUTE,
-  qwen: 5 * MINUTE,
-  moonshot: 5 * MINUTE,
-}
 
 function findLastCacheActivity(messages: Accessor<AssistantMessage[]>): AssistantMessage | null {
   const msgs = messages()
@@ -43,41 +25,9 @@ function findLastCacheActivity(messages: Accessor<AssistantMessage[]>): Assistan
   return null
 }
 
-function getTTL(
-  providerID: string,
-  modelID: string,
-  config: CacheTTLConfig,
-): number {
-  const userProviders = config.providers
-  const specific = userProviders[`${providerID}:${modelID}`]
-  if (specific !== undefined) {
-    const parsed = parseDuration(specific)
-    if (parsed !== null) return parsed
-  }
-  const userProvider = userProviders[providerID]
-  if (userProvider !== undefined) {
-    const parsed = parseDuration(userProvider)
-    if (parsed !== null) return parsed
-  }
-  const builtIn = BUILT_IN_TTL[providerID]
-  if (builtIn !== undefined) return builtIn
-  return DEFAULT_TTL_MS
-}
-
-function formatElapsed(ms: number): string {
-  if (ms <= 0) return "0s"
-  const totalSeconds = Math.floor(ms / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  if (hours > 0) return `${hours}h ${minutes}m`
-  if (minutes > 0) return `${minutes}m ${seconds}s`
-  return `${seconds}s`
-}
-
 export function CacheTTLView(props: {
   messages: Accessor<AssistantMessage[]>
-  config: CacheTTLConfig
+  config?: CacheTTLConfig
   pal: PanelPalette
   layout: PanelLayout
   label: string
@@ -88,10 +38,16 @@ export function CacheTTLView(props: {
 
   const lastCache = createMemo(() => findLastCacheActivity(props.messages))
 
+  // Self-heal against partial/undefined config reaching this component (see #1, #3):
+  // a stale-cached plugin build may pass { enabled: true } without `providers`.
+  const safeConfig = createMemo(() =>
+    props.config?.providers ? props.config : DEFAULT_CACHE_TTL,
+  )
+
   const ttlMs = createMemo(() => {
     const m = lastCache()
     if (!m || !m.providerID) return DEFAULT_TTL_MS
-    return getTTL(m.providerID, m.modelID ?? "", props.config)
+    return getTTL(m.providerID, m.modelID ?? "", safeConfig())
   })
 
   const elapsed = createMemo(() => {
