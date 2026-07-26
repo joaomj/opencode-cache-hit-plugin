@@ -207,13 +207,22 @@ Shows how long the prompt cache has been alive. Color changes when exceeding TTL
 
 ## Updating
 
-OpenCode may [cache plugins at first install](https://github.com/anomalyco/opencode/issues/6774) and not auto-refresh npm versions.
+> [!IMPORTANT]
+> OpenCode **pins `@latest` to the first-resolved version and never re-fetches it** ([opencode#6774](https://github.com/anomalyco/opencode/issues/6774), [#25293](https://github.com/anomalyco/opencode/issues/25293), [#30631](https://github.com/anomalyco/opencode/issues/30631)). A `restart` alone will **not** pick up a newer npm release. If you are running an old cached build, you may hit crashes already fixed upstream (e.g. [#3](https://github.com/zhumengzhu/opencode-cache-hit/issues/3) — the sidebar vanishing with `undefined is not an object (evaluating 'config.providers')`). OpenCode wraps each plugin slot in a per-slot `<ErrorBoundary>` (via `@opentui/solid`, present since v1.17.0). A SolidJS component render error is caught and logged to stderr — the broken slot unmounts silently (no crash screen, easy to miss) while the rest of the TUI survives. Note: lower-level opentui/yoga renderer errors (e.g. layout-phase faults) can still bypass this boundary and crash the whole TUI.
+
+To force an update, delete the cached package, then reinstall and restart:
 
 ```bash
 rm -rf ~/.cache/opencode/packages/opencode-cache-hit@latest
 ```
 
 Then reinstall via `Ctrl+P` → install plugin, and **restart OpenCode**.
+
+To avoid the pinning issue entirely, install a **pinned version** instead of `@latest`:
+
+```jsonc
+{ "plugin": ["opencode-cache-hit@0.6.3"] }
+```
 
 ## Compatibility
 

@@ -207,13 +207,22 @@ jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]
 
 ## 更新
 
-OpenCode 可能在首次安装时[缓存插件](https://github.com/anomalyco/opencode/issues/6774)且不自动刷新 npm 版本。
+> [!IMPORTANT]
+> OpenCode **会把 `@latest` 固定到首次解析的版本，之后永不重新拉取**（[opencode#6774](https://github.com/anomalyco/opencode/issues/6774)、[#25293](https://github.com/anomalyco/opencode/issues/25293)、[#30631](https://github.com/anomalyco/opencode/issues/30631)）。仅**重启并不会**加载更新的 npm 版本。如果你还在跑旧的缓存构建，可能会遇到上游早已修复的崩溃（例如 [#3](https://github.com/zhumengzhu/opencode-cache-hit/issues/3) —— 侧边栏消失并报 `undefined is not an object (evaluating 'config.providers')`）。OpenCode 通过 `@opentui/solid` 为每个插件 slot 包裹了 per-slot `<ErrorBoundary>`（自 v1.17.0 起存在）。SolidJS 组件渲染错误会被捕获并记录到 stderr —— 出错的 slot 静默卸载（无崩溃屏，容易被忽略），TUI 其余部分正常存活。注意：更底层的 opentui/yoga 渲染器错误（如布局阶段故障）仍可能绕过此边界并拖垮整个 TUI。
+
+强制更新：删除缓存目录，然后重装并重启：
 
 ```bash
 rm -rf ~/.cache/opencode/packages/opencode-cache-hit@latest
 ```
 
 然后通过 `Ctrl+P` → install plugin 重装并**重启 OpenCode**。
+
+要彻底避免固定问题，可安装**固定版本**而非 `@latest`：
+
+```jsonc
+{ "plugin": ["opencode-cache-hit@0.6.3"] }
+```
 
 ## 兼容性
 
