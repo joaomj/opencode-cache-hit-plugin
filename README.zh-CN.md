@@ -221,7 +221,7 @@ rm -rf ~/.cache/opencode/packages/opencode-cache-hit@latest
 要彻底避免固定问题，可安装**固定版本**而非 `@latest`：
 
 ```jsonc
-{ "plugin": ["opencode-cache-hit@0.6.3"] }
+{ "plugin": ["opencode-cache-hit@0.6.4"] }
 ```
 
 ## 兼容性

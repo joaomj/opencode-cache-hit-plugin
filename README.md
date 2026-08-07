@@ -221,7 +221,7 @@ Then reinstall via `Ctrl+P` → install plugin, and **restart OpenCode**.
 To avoid the pinning issue entirely, install a **pinned version** instead of `@latest`:
 
 ```jsonc
-{ "plugin": ["opencode-cache-hit@0.6.3"] }
+{ "plugin": ["opencode-cache-hit@0.6.4"] }
 ```
 
 ## Compatibility

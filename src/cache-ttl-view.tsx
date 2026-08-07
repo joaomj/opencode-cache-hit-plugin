@@ -10,8 +10,9 @@ import { type CacheTTLConfig, DEFAULT_CACHE_TTL } from "./plugin-config.ts"
 import { getTTL, formatElapsed, DEFAULT_TTL_MS } from "./cache-ttl.ts"
 import type { PanelPalette, PanelLayout } from "./tui-panel/index.ts"
 
-function findLastCacheActivity(messages: Accessor<AssistantMessage[]>): AssistantMessage | null {
-  const msgs = messages()
+function findLastCacheActivity(messages: Accessor<AssistantMessage[]> | undefined): AssistantMessage | null {
+  const msgs = messages?.()
+  if (!msgs) return null
   for (let i = msgs.length - 1; i >= 0; i--) {
     const m = msgs[i]
     if (
@@ -26,7 +27,7 @@ function findLastCacheActivity(messages: Accessor<AssistantMessage[]>): Assistan
 }
 
 export function CacheTTLView(props: {
-  messages: Accessor<AssistantMessage[]>
+  messages?: Accessor<AssistantMessage[]>
   config?: CacheTTLConfig
   pal: PanelPalette
   layout: PanelLayout
@@ -77,7 +78,7 @@ export function CacheTTLView(props: {
   return (
     <Show when={elapsed() !== null}>
       <text fg={statusColor()}>
-        {props.layout.row(props.label, `${statusIcon()} ${formatElapsed(elapsed()!)}`, "")}
+        {props.layout.row(props.label, `${statusIcon()} ${formatElapsed(elapsed() ?? 0)}`, "")}
       </text>
     </Show>
   )

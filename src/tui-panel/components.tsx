@@ -183,7 +183,7 @@ export function TuiHitRow(props: {
       <span style={{ fg: props.barColor }}>[{props.bar}] </span>
       <span style={{ fg: props.textColor }}>{props.pct}</span>
       <Show when={props.trend}>
-        <span style={{ fg: props.trend!.color }}> {props.trend!.text}</span>
+        <span style={{ fg: props.trend?.color }}> {props.trend?.text}</span>
       </Show>
     </text>
   )
