@@ -40,6 +40,7 @@ After moving or renaming exports: run full `bun test`; `tests/module-load.test.t
 - **`PLUGIN_ROOT`** in `load-config.ts` is `fileURLToPath(new URL("..", import.meta.url))` — do **not** wrap with an extra `dirname` (breaks config path).
 - **Sub-agent ids**: only from `session.list` overwrite in `child-session-sync.ts`; do not append via `session.get`.
 - **Agents UI totals**: child sessions only; main session excluded by design (see design doc).
+- **Eager-safe JSX**: this plugin ships raw TSX; npm installs land under `node_modules`, where opencode/opentui skip the Solid transform (see [opencode#39986](https://github.com/anomalyco/opencode/issues/39986)), so bun's generic JSX compiles `<Show>`/`<For>` children eagerly — accessing a guard variable's property inside children can throw on `undefined` before `when`/`each` runs. Never `!`-assert a guard variable in control-flow children; use `?.`/`??`, bind a local accessor, or accept `| undefined` in child props. Guard against `tests/eager-safe-jsx.test.ts`.
 - Comments only for non-obvious behavior.
 
 ## Configuration

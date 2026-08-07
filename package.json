@@ -1,9 +1,10 @@
 {
   "name": "opencode-cache-hit",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "OpenCode TUI sidebar: prompt cache hit rate, tokens & cost with sub-agent rollup. Works with opencode-visual-cache; optional per-call JSONL timeline.",
   "type": "module",
   "license": "MIT",
+  "author": "mengzhu.zhu <mengzhu.loveyou@gmail.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/zhumengzhu/opencode-cache-hit"
@@ -65,6 +66,7 @@
     "@opentui/solid": ">=0.2.0"
   },
   "devDependencies": {
+    "@opentui/solid": "^0.4.5",
     "simple-git-hooks": "^2.13.1"
   }
 }
