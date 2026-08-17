@@ -6,3 +6,5 @@
 | 中文 | [README.zh-CN.md](../README.zh-CN.md) | [zh-CN/design.md](./zh-CN/design.md) | [zh-CN/timeline.md](./zh-CN/timeline.md) | [zh-CN/token-speed.md](./zh-CN/token-speed.md) | [zh-CN/ttft-hybrid.md](./zh-CN/ttft-hybrid.md) | [zh-CN/ttft-troubleshooting.md](./zh-CN/ttft-troubleshooting.md) | [../src/tui-panel/README.zh-CN.md](../src/tui-panel/README.zh-CN.md) | [zh-CN/frontend-migration-plan.md](./zh-CN/frontend-migration-plan.md) |
 
 Contributing: [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+> Dynamic pricing (time-of-day + context tiers): design notes in [zh-CN/dynamic-pricing-plan.md](./zh-CN/dynamic-pricing-plan.md).

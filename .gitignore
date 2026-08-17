@@ -3,3 +3,6 @@ node_modules/
 logs/
 *.jsonl
 cache-hit.config.json
+
+# Runtime tool artifacts (e.g. omo run-continuation)
+.omo/

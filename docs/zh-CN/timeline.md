@@ -47,6 +47,7 @@ export type LlmCallRecord = {
   /** OpenCode message id；SDK 若无则用稳定合成键，见下文 */
   messageKey: string
   modelId: string
+  providerId?: string      // 记录时的 provider id（旧日志可能缺失）
   created: string
   completedAt?: string
   durationMs?: number
@@ -321,6 +322,8 @@ bun scripts/plot-hit-rate.ts $LOG -o /tmp/hit.svg
 bun scripts/plot-hit-rate.ts $LOG --by-root -o /tmp/hit-multi.svg
 
 # 交互式 HTML 仪表盘（筛选、Chart.js）；加 --open 才会打开浏览器
+# 读取 ~/.config/opencode/opencode.json（支持 JSONC 注释）并用动态计价（时段 / 上下文档位）
+# 重算成本——注入为 `dynCost`，与原值不同时以 ≈ 展示并计入图表/合计
 bun scripts/timeline-dashboard.ts --open
 ```
 

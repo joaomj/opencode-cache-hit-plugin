@@ -1,4 +1,4 @@
-import { childSessionIdsForParent, parseSessionListResponse } from "./session-list.ts"
+import { childSessionEntriesForParent, parseSessionListResponse, type SessionListEntry } from "./session-list.ts"
 import type { OpenCodeTuiApi } from "./types.ts"
 
 /** Debounce for session.list after foreign-session message.updated (streaming fires often). */
@@ -18,6 +18,8 @@ export function createChildSessionSync(opts: {
   getParentId: () => string
   setChildIds: (ids: string[]) => void
   onSynced?: () => void
+  /** Optional: receives full list entries (incl. `created` for time-of-day pricing). */
+  setChildEntries?: (entries: SessionListEntry[]) => void
   debounceMs?: number
 }) {
   let listGen = 0
@@ -33,6 +35,7 @@ export function createChildSessionSync(opts: {
     const parentId = opts.getParentId()
     if (!parentId) {
       opts.setChildIds([])
+      opts.setChildEntries?.([])
       return
     }
     const gen = listGen
@@ -42,12 +45,15 @@ export function createChildSessionSync(opts: {
       .then(
         (all) => {
           if (gen !== listGen || opts.getParentId() !== parentId) return
-          opts.setChildIds(childSessionIdsForParent(parseSessionListResponse(all), parentId))
+          const entries = childSessionEntriesForParent(parseSessionListResponse(all), parentId)
+          opts.setChildIds(entries.map((e) => e.id))
+          opts.setChildEntries?.(entries)
           opts.onSynced?.()
         },
         () => {
           if (gen !== listGen || opts.getParentId() !== parentId) return
           opts.setChildIds([])
+          opts.setChildEntries?.([])
         },
       )
   }

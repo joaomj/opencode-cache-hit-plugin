@@ -28,5 +28,30 @@
     "enabled": true,
     "providers": {
     }
+  },
+  "dynamicPricing": {
+    "enabled": true,
+    "timezone": "Asia/Shanghai",
+    "schedule": [
+      { "level": "peak",    "windows": [{"start": "09:00", "end": "12:00"}, {"start": "14:00", "end": "18:00"}] },
+      { "level": "offpeak", "windows": [{"start": "18:00", "end": "09:00"}, {"start": "12:00", "end": "14:00"}] }
+    ],
+    "contextThreshold": 200000,
+    "providers": {
+      "deepseek": {
+        "models": {
+          "deepseek/deepseek-v4-flash": {
+            "multipliers": { "peak": 1, "offpeak": 0.5 }
+          },
+          "deepseek/deepseek-v4-pro": {
+            "currency": "CNY",
+            "levels": {
+              "offpeak": { "input": 4.5, "output": 13.5, "cacheRead": 0.15, "cacheWrite": 0 },
+              "peak":    { "input": 9.0, "output": 27.0, "cacheRead": 0.30, "cacheWrite": 0 }
+            }
+          }
+        }
+      }
+    }
   }
 }

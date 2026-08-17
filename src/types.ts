@@ -20,6 +20,8 @@ export type SubAgentSummary = {
   cacheRead: number
   cacheWrite: number
   speed?: number
+  /** Session creation time (ms), from session.list — enables time-of-day pricing recompute. */
+  created?: number
 }
 
 export type AssistantMessage = {
@@ -48,6 +50,14 @@ export type ModelCost = {
   input: number
   output: number
   cache: { read: number; write: number }
+  /**
+   * 上下文分档价格（阈值见 `contextThreshold`，默认 200k）。
+   * 兼容两处来源：opencode.json 配置层的 `context_over_200k`，
+   * 以及运行时 `state.provider` 的 `tiers`/`experimentalOver200K`（由 normalizeRuntimeCost 归一化）。
+   */
+  context_over_200k?: ModelCost
+  /** 该分档的阈值（token 数）；来自运行时 tier.size，缺省用全局 contextThreshold。 */
+  contextThreshold?: number
 }
 
 export type ProviderInfo = {

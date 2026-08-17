@@ -9,6 +9,8 @@ export type LlmCallRecord = {
   scope: "main" | "child"
   messageKey: string
   modelId: string
+  /** Provider id at record time (may be absent in older logs). */
+  providerId?: string
   created: string
   completedAt?: string
   durationMs?: number
@@ -19,6 +21,8 @@ export type LlmCallRecord = {
   cacheRead: number
   cacheWrite: number
   cost: number
+  /** Injected by timeline-dashboard: cost recomputed with dynamic pricing (time-of-day / context tier). */
+  dynCost?: number
   hitPercent: number | null
   skippedForHit: boolean
   ttftMs?: number

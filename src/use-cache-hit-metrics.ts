@@ -1,5 +1,5 @@
-import { createMemo, type Accessor } from "solid-js"
-import type { DisplayConfig } from "./plugin-config.ts"
+import { createMemo, createSignal, onCleanup, type Accessor } from "solid-js"
+import type { DisplayConfig, DynamicPricingConfig } from "./plugin-config.ts"
 import { getUiStrings, resolveLang } from "./i18n.ts"
 import {
   formatHitBar,
@@ -18,7 +18,9 @@ import {
   mainSessionHasStats,
   shortModelName,
 } from "./stats.ts"
-import { computePricing, type PricingInfo } from "./pricing.ts"
+import { computePricing, computeSubsSaved, type PricingInfo } from "./pricing.ts"
+import { recomputeSessionCost, recomputeSubAgentCost } from "./dynamic-pricing/recompute.ts"
+import { nextBoundaryMs } from "./dynamic-pricing/schedule.ts"
 import {
   computeAvgTokenTpotMs,
   computeTokenTpotMs,
@@ -49,6 +51,7 @@ export function useCacheHitMetrics(props: {
   main: Accessor<SessionSnapshot>
   subAgents: Accessor<SubAgentSummary[]>
   providers: Accessor<ReadonlyArray<ProviderInfo>>
+  dynamicPricing: DynamicPricingConfig
   layout: PanelLayout
   firstPartTime: Accessor<ReadonlyMap<string, number>>
 }) {
@@ -60,9 +63,55 @@ export function useCacheHitMetrics(props: {
   const perCall = createMemo(() => computePerCallHitTrend(props.messages()))
   const sessionRatio = createMemo(() => cacheHitRatio(main().cacheRead, main().input))
 
+  // 动态计价：跨时段边界精确刷新（无需每秒轮询）。
+  // 单一 timer 引用 + 组件 owner 级 onCleanup：递归安排的后续 timer 在卸载时一并清理
+  // （不能在 setTimeout 回调内注册 onCleanup——已脱离 Solid owner，卸载不触发）。
+  const [now, setNow] = createSignal(Date.now())
+  let boundaryTimer: ReturnType<typeof setTimeout> | undefined
+  const scheduleBoundary = () => {
+    const rules = props.dynamicPricing
+    const ms =
+      rules.schedule.length > 0 ? nextBoundaryMs(now(), rules.schedule, rules.timezone || "UTC") : 0
+    if (ms <= 0) return
+    boundaryTimer = setTimeout(() => {
+      setNow(Date.now())
+      scheduleBoundary()
+    }, ms)
+  }
+  onCleanup(() => {
+    if (boundaryTimer !== undefined) clearTimeout(boundaryTimer)
+  })
+  scheduleBoundary()
+
   const pricing = createMemo<PricingInfo>(() =>
-    computePricing(props.providers(), main().providerID, main().model, main().cacheRead),
+    computePricing(props.providers(), main().providerID, main().model, main().cacheRead, {
+      now: now(),
+      contextTokens: main().input + main().cacheRead,
+      rules: props.dynamicPricing,
+    }),
   )
+
+  // 子 agent 缓存节省：按当前时段 + 各子会话总输入（input + cacheRead）判定档位。
+  const subsSaved = createMemo(() =>
+    computeSubsSaved(subs(), props.providers(), {
+      now: now(),
+      rules: props.dynamicPricing,
+    }),
+  )
+
+  // 动态成本重算（按每条消息的请求时刻 + 上下文分档）；不可定价时回退 null。
+  const recomputedCost = createMemo(() =>
+    recomputeSessionCost(props.messages(), props.providers(), props.dynamicPricing),
+  )
+
+  // 子 agent 动态成本（按其会话创建时刻 + 聚合 tokens 近似）；无 created / 不可定价 → null。
+  const subAgentDynamicCosts = createMemo(() => {
+    const rules = props.dynamicPricing
+    const providers = props.providers()
+    return new Map(
+      subs().map((s) => [s.id, recomputeSubAgentCost(s, providers, rules)] as const),
+    )
+  })
 
   const mainHasStats = createMemo(() => mainSessionHasStats(main()))
   const hasData = createMemo(() => mainHasStats() || subs().length > 0)
@@ -192,6 +241,9 @@ export function useCacheHitMetrics(props: {
     pctLabel: createMemo(() => formatPercentOneDecimal(perCall().hitPercent)),
     modelShort: createMemo(() => shortModelName(main().model)),
     totalSubCost: createMemo(() => subs().reduce((s, a) => s + a.cost, 0)),
+    recomputedCost,
+    subAgentDynamicCosts,
+    subsSaved,
     collapsedHitSummary,
     useTps,
     lastSpeed,

@@ -33,6 +33,22 @@ export function MainSessionView(props: {
     const now = props.streamingNow()
     return formatStreamingNowDisplay(now.phase, now.speed, m.t().streamingIdle, m.useTps())
   })
+
+  /** 动态规则生效时展示重算成本（≈ 前缀），否则回退 OpenCode 的 msg.cost。 */
+  const shownCost = createMemo(() => {
+    const rec = m.recomputedCost()
+    if (rec && rec.dynamic) return { value: rec.cost, approx: true }
+    return { value: m.main().cost, approx: false }
+  })
+
+  const rateLabel = createMemo(() => {
+    const p = m.pricing()
+    const badges: string[] = []
+    if (p.level === "peak") badges.push(m.t().peakBadge)
+    else if (p.level === "offpeak") badges.push(m.t().offpeakBadge)
+    if (p.contextTier === "over") badges.push(m.t().over200kBadge)
+    return badges.length > 0 ? `${m.t().rate} ${badges.join("·")}` : m.t().rate
+  })
   return (
     <>
       <TuiHitRow
@@ -132,12 +148,12 @@ export function MainSessionView(props: {
         title={m.t().secModel}
         onToggle={props.model.toggle}
       >
-        <Show when={m.main().cost > 0}>
+        <Show when={shownCost().value > 0}>
           <TuiMetricRow
             pal={m.pal()}
             layout={layout}
             label={m.t().cost}
-            value={props.formatCost(m.main().cost)}
+            value={`${shownCost().approx ? m.t().approx : ""}${props.formatCost(shownCost().value)}`}
             fg={m.pal().text}
           />
         </Show>
@@ -148,7 +164,7 @@ export function MainSessionView(props: {
           <TuiMetricRow
             pal={m.pal()}
             layout={layout}
-            label={m.t().rate}
+            label={rateLabel()}
             value={`${props.formatRate(m.pricing().inputRate)}${m.t().rateIn}`}
             fg={m.pal().muted}
           />

@@ -33,6 +33,13 @@ export type UiStrings = {
   ttft: string
   /** Shown in Speed → Now when no stream is active (not a missing-data dash). */
   streamingIdle: string
+  /** Prefix for session cost recomputed from dynamic pricing. */
+  approx: string
+  /** Time-of-day tier badges appended to the Rate label. */
+  peakBadge: string
+  offpeakBadge: string
+  /** Context tier badge shown when over the context threshold. */
+  over200kBadge: string
 }
 
 const EN: UiStrings = {
@@ -66,6 +73,10 @@ const EN: UiStrings = {
   trend: "Trend:",
   ttft: "TTFT:",
   streamingIdle: "·",
+  approx: "≈",
+  peakBadge: "peak",
+  offpeakBadge: "offpeak",
+  over200kBadge: ">200k",
 }
 
 const ZH: UiStrings = {
@@ -99,6 +110,10 @@ const ZH: UiStrings = {
   trend: "趋势:",
   ttft: "首Token:",
   streamingIdle: "·",
+  approx: "≈",
+  peakBadge: "高峰",
+  offpeakBadge: "空闲",
+  over200kBadge: ">200k",
 }
 
 export function resolveLang(raw: unknown): Lang {

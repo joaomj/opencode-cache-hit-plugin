@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
-import type { DisplayConfig, CacheTTLConfig } from "./plugin-config.ts"
+import type { DisplayConfig, CacheTTLConfig, DynamicPricingConfig } from "./plugin-config.ts"
 import type { AssistantMessage, ProviderInfo, SessionSnapshot, SubAgentSummary } from "./types.ts"
 import type { StreamingPhase } from "./streaming-state.ts"
 import { PLUGIN_VERSION } from "./version.ts"
@@ -26,6 +26,7 @@ export function CacheHitSidebar(props: {
   theme: Record<string, unknown>
   display: DisplayConfig
   cacheTTL: CacheTTLConfig
+  dynamicPricing: DynamicPricingConfig
   messages: Accessor<AssistantMessage[]>
   main: Accessor<SessionSnapshot>
   subAgents: Accessor<SubAgentSummary[]>
@@ -51,6 +52,7 @@ export function CacheHitSidebar(props: {
     main: props.main,
     subAgents: props.subAgents,
     providers: props.providers,
+    dynamicPricing: props.dynamicPricing,
     layout,
     firstPartTime: props.firstPartTime,
   })
@@ -129,7 +131,7 @@ export function CacheHitSidebar(props: {
                 suffix={agentsSuffix()}
                 onToggle={agents.toggle}
               >
-                <AgentsView m={m} layout={layout} providers={props.providers()} formatCost={props.formatCost} formatSpeed={formatSpeed()} />
+                <AgentsView m={m} layout={layout} formatCost={props.formatCost} formatSpeed={formatSpeed()} />
               </TuiSection>
             </Show>
           </Show>

@@ -42,6 +42,7 @@ export type LlmCallRecord = {
   scope: "main" | "child"
   messageKey: string
   modelId: string
+  providerId?: string      // provider id at record time (older logs may lack it)
   created: string
   completedAt?: string
   durationMs?: number
@@ -308,6 +309,9 @@ bun scripts/plot-hit-rate.ts "$LOG" -o /tmp/hit.svg
 bun scripts/plot-hit-rate.ts "$LOG" --by-root -o /tmp/hit-multi.svg
 
 # interactive HTML dashboard (filters, Chart.js); add --open to launch browser
+# reads ~/.config/opencode/opencode.json (JSONC-aware) and recomputes costs with
+# dynamic pricing (time-of-day / context tiers) — injected as `dynCost`, shown
+# with ≈ and counted in charts/totals when it differs from the original cost
 bun scripts/timeline-dashboard.ts --open
 ```
 

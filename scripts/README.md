@@ -100,3 +100,14 @@ Use a real path, not `$LOG`, unless you exported it first:
 set -x LOG logs/timeline-(date +%Y-%m-%d).jsonl   # fish: set log ...
 bun scripts/plot-hit-rate.ts $LOG -o /tmp/hit.svg
 ```
+
+## `fetch-deepseek-pricing.ts` (Bun, no install)
+
+Fetch DeepSeek official peak/off-peak pricing and print a ready-to-paste `dynamicPricing.providers` snippet for cache-hit.json:
+
+```bash
+bun scripts/fetch-deepseek-pricing.ts                  # CNY per 1M tokens, includes "currency": "CNY"
+bun scripts/fetch-deepseek-pricing.ts --usd --rate 6.77 # USD (divided by rate)
+```
+
+Output is JSON to merge under `"dynamicPricing"`; non-USD `levels` are converted to internal USD at config load using `cost.rate`.
