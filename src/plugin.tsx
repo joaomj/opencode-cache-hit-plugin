@@ -22,6 +22,7 @@ export const tui = async (api: OpenCodeTuiApi) => {
             display={pluginConfig.display}
             timeline={pluginConfig.timeline}
             cacheTTL={pluginConfig.cacheTTL}
+            dynamicPricing={pluginConfig.dynamicPricing}
             formatCost={formatCost}
             formatRate={formatRate}
             api={api}

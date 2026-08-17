@@ -29,7 +29,7 @@ export const DEFAULT_COST_DISPLAY: CostDisplayConfig = {
   rate: 6.77,
 }
 
-function resolveExchangeRate(cfg: CostDisplayConfig): number {
+export function resolveExchangeRate(cfg: CostDisplayConfig): number {
   if (cfg.convert?.rate && cfg.convert.rate > 0) return cfg.convert.rate
   if (cfg.rate && cfg.rate > 0) return cfg.rate
   const unit = cfg.costUnit ?? "USD"

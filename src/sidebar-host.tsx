@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import { CacheHitSidebar } from "./widget.tsx"
-import type { DisplayConfig, TimelineConfig, CacheTTLConfig } from "./plugin-config.ts"
+import type { DisplayConfig, TimelineConfig, CacheTTLConfig, DynamicPricingConfig } from "./plugin-config.ts"
 import { isToolSummaryEnabled } from "./plugin-config.ts"
 import { createTimelineCollector } from "./timeline/collector.ts"
 import {
@@ -27,6 +27,7 @@ import {
   withModelFallback,
 } from "./stats.ts"
 import { createChildSessionSync } from "./child-session-sync.ts"
+import type { SessionListEntry } from "./session-list.ts"
 import { loadPluginConfig } from "./load-config.ts"
 import { computeAvgTokenTpotMs, computeAvgTokenSpeed } from "./token-speed.ts"
 import {
@@ -53,12 +54,14 @@ export function CacheHitSidebarHost(props: {
   display: DisplayConfig
   timeline: TimelineConfig
   cacheTTL: CacheTTLConfig
+  dynamicPricing: DynamicPricingConfig
   formatCost: (amount: number) => string
   formatRate: (perMillion: number) => string
   api: OpenCodeTuiApi
 }) {
   const [refreshTick, setRefreshTick] = createSignal(0)
   const [childIds, setChildIds] = createSignal<string[]>([])
+  const [childEntries, setChildEntries] = createSignal<SessionListEntry[]>([])
 
   /** Re-read cache-hit.config.json when parent session changes (picks up edits without full plugin reload). */
   const runtimeConfig = createMemo(() => {
@@ -67,6 +70,7 @@ export function CacheHitSidebarHost(props: {
   })
   const display = createMemo(() => runtimeConfig().display)
   const cacheTTL = createMemo(() => runtimeConfig().cacheTTL)
+  const dynamicPricing = createMemo(() => runtimeConfig().dynamicPricing)
   const timelineConfig = createMemo(() => runtimeConfig().timeline)
 
   const bumpRefresh = () => setRefreshTick((v) => v + 1)
@@ -96,6 +100,7 @@ export function CacheHitSidebarHost(props: {
     getDirectory: () => props.api.state.path.directory,
     getParentId: () => props.sessionId,
     setChildIds,
+    setChildEntries,
     onSynced: () => {
       bumpRefresh()
     },
@@ -131,8 +136,10 @@ export function CacheHitSidebarHost(props: {
   const subAgentList = createMemo(() => {
     void refreshTick()
     const useTps = display().speedUnit === "tps"
+    const createdById = new Map(childEntries().map((e) => [e.id, e.created]))
     return childIds()
       .map((cid) => {
+        const created = createdById.get(cid)
         const session = props.api.state.session.get?.(cid)
         if (session) {
           const snap = aggregateFromSessionObject(session)
@@ -142,7 +149,7 @@ export function CacheHitSidebarHost(props: {
             const speed = msgs
               ? (useTps ? computeAvgTokenSpeed(msgs) || undefined : computeAvgTokenTpotMs(msgs))
               : undefined
-            return toSubAgentSummary(cid, merged, speed)
+            return toSubAgentSummary(cid, merged, speed, created)
           }
         }
         const msgs = props.api.state.session.messages(cid)
@@ -152,7 +159,7 @@ export function CacheHitSidebarHost(props: {
         const speed = useTps
           ? computeAvgTokenSpeed(msgs as AssistantMessage[]) || undefined
           : computeAvgTokenTpotMs(msgs as AssistantMessage[])
-        return toSubAgentSummary(cid, snap, speed)
+        return toSubAgentSummary(cid, snap, speed, created)
       })
       .filter(Boolean) as SubAgentSummary[]
   })
@@ -295,6 +302,7 @@ export function CacheHitSidebarHost(props: {
       theme={props.theme}
       display={display()}
       cacheTTL={cacheTTL()}
+      dynamicPricing={dynamicPricing()}
       messages={mainMessages}
       main={mainSnap}
       subAgents={subAgentList}

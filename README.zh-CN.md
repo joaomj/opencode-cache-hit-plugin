@@ -33,7 +33,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 
 - **命中率**：会话累计 + **单轮**命中率与趋势（↑ / ↓ / `-`）
 - **Token 明细**：缓存读 / 写 / 未命中 / 输出（对齐 visual-cache 的行布局）
-- **费用**：多币种配置（`USD` / `CNY` / `EUR` / `GBP` / `JPY`）；从 provider 配置读取百万 token 单价及缓存节省
+- **费用**：多币种配置（`USD` / `CNY` / `EUR` / `GBP` / `JPY`）；从 provider 配置读取百万 token 单价及缓存节省；**动态计价**：支持按时段（DeepSeek 高峰/空闲）与按上下文分档（`context_over_200k`，如 GPT-5.6）
 - **子 agent**：**Agents** 段仅汇总**子 session**（UI 有范围标注）；每行显示模型名 + session ID 后缀，**label 按厂商近似品牌色**，金额为灰色
 - **主 + Agents**：主块始终显示；有子 agent 时出现可折叠的 **Agents** 段
 - **可折叠段落**：Detail / Model（以及 Agents）；主题自适应的命中率条颜色
@@ -95,7 +95,7 @@ OpenCode **TUI 侧边栏插件**：展示 prompt cache 命中率、token 用量�
 {
   "currency": "CNY",
   "costUnit": "USD",
-  "rate": 7.2
+  "rate": 6.77
 }
 ```
 
@@ -204,6 +204,56 @@ jq -r 'select(.rootSessionId=="YOUR_ROOT") | [.created,.scope,.hitPercent,.cost]
 | moonshot | 5 分钟 | 隐式缓存 |
 
 **默认 TTL**：上表未列出的 provider 均为 5 分钟。颜色基于已存活时间与 TTL 的比值：绿色（< TTL）、黄色（TTL–2×TTL）、红色（≥ 2×TTL）。
+
+### 动态计价（`dynamicPricing`，默认开启）
+
+模型单价通常为 OpenCode provider 注册表中的静态 USD/百万 token。部分模型按**时段**计价（DeepSeek V4：高峰 09:00-12:00 / 14:00-18:00 北京时间，空闲半价），或按**上下文大小**分档（`context_over_200k`，如 GPT-5.6：超过 200k token 单价约翻倍）。
+
+零配置时插件已自动：
+
+- 读取 `state.provider` 中模型的上下文档位（运行时 `tiers` / `experimentalOver200K`，内部归一化），按总上下文（输入 + 缓存读）与阈值显示对应档位。
+- 时段匹配时对 DeepSeek 模型应用内置空闲 0.5× 倍率。
+
+```json
+"dynamicPricing": {
+  "enabled": true,
+  "timezone": "Asia/Shanghai",
+  "schedule": [
+    { "level": "peak",    "windows": [{"start": "09:00", "end": "12:00"}, {"start": "14:00", "end": "18:00"}] },
+    { "level": "offpeak", "windows": [{"start": "18:00", "end": "09:00"}, {"start": "12:00", "end": "14:00"}] }
+  ],
+  "contextThreshold": 200000,
+  "providers": {
+    "deepseek": {
+      "models": {
+        "deepseek/deepseek-v4-flash": {
+          "multipliers": { "peak": 1, "offpeak": 0.5 }
+        }
+      }
+    }
+  }
+}
+```
+
+| 字段 | 默认值 | 含义 |
+|------|--------|------|
+| `enabled` | `true` | 总开关。设为 `false` 恢复完全静态计价 |
+| `timezone` | `Asia/Shanghai` | 时段匹配所用 IANA 时区（DeepSeek 按北京时间计价） |
+| `schedule` | DeepSeek 高峰/空闲 | `{level, windows:[{start,end}]}` 列表；`HH:MM` 格式，支持跨天窗口 |
+| `contextThreshold` | `200000` | 上下文档位的 token 阈值；模型级 `contextThreshold` 优先于 `state.provider` 的运行时档位阈值 |
+| `providers` | `{}` | 按 `providerID` → `modelID` 的规则 |
+
+单模型规则支持两种形式（显式配置优先于内置 DeepSeek 默认）：
+
+- `multipliers`：按时段档对静态价施加系数（如 `{"offpeak": 0.5}`）
+- `levels`：各时段档的绝对单价，如 `{"peak": {"input": 0.44, "output": 0.88, "cacheRead": 0.01}, "offpeak": {"input": 0.22, ...}}`。缓存单价可写为扁平 `cacheRead`/`cacheWrite`（或 `cache_read`/`cache_write`），也可写为嵌套 `cache: {"read": …, "write": …}`（两种都接受；同时存在时扁平优先）。默认单位为 **USD/百万 token**（与 `state.provider` 一致）。想用其他币种写价时设 `"currency": "CNY"`：要么与展示币种 `cost.currency` 一致（按 `cost.rate` 换算），要么提供模型级 `"rate"`（USD → 该币种，如 EUR 填 1.08）。无法换算时（无 `rate` 且币种 ≠ 展示币种）向 stderr 告警并按 USD 处理。`multipliers` 是倍率，无币种概念。
+- `contextThreshold`：覆盖全局阈值的模型级配置（优先于 `state.provider` 的运行时档位阈值）。
+
+侧边栏单价会在时段边界自动切换（无需轮询）。会话成本在动态规则生效时按每条消息的请求时刻 + 上下文档位重算（标注 `≈`）；否则使用 OpenCode 自身的 `msg.cost`。子 agent 行按其**会话创建时刻**（`session.list`）做时段计价（任一子会话被重算时 Agents 合计标注 `≈`）。
+
+**时间轴看板**（[docs/zh-CN/timeline.md](docs/zh-CN/timeline.md)）也会离线重算成本：读取 `~/.config/opencode/opencode.json`（支持 JSONC 注释）获取 provider 单价，逐条注入 `dynCost`（与原值不同时以 `≈` 展示，并计入图表与合计）。
+
+**刷新 DeepSeek 官方价**：`bun scripts/fetch-deepseek-pricing.ts` 输出可直接粘贴的 `dynamicPricing.providers` 片段（默认人民币并带 `"currency": "CNY"`，`--usd --rate 6.77` 转美元）。
 
 ## 更新
 

@@ -12,7 +12,7 @@
  */
 
 import { execSync } from "child_process"
-import { existsSync, readdirSync } from "fs"
+import { existsSync, readFileSync, readdirSync } from "fs"
 import { homedir } from "os"
 import { basename, dirname, resolve } from "path"
 import { Glob } from "bun"
@@ -23,7 +23,56 @@ import {
   type CostDisplayEmbed,
 } from "../src/format-cost.ts"
 import { loadPluginConfig } from "../src/load-config.ts"
+import { recomputeRecordCost } from "../src/dynamic-pricing/recompute.ts"
 import type { LlmCallRecord } from "../src/timeline/types.ts"
+import type { ProviderInfo } from "../src/types.ts"
+import { parseJsonc } from "../src/jsonc.ts"
+
+/**
+ * 从 opencode.json 的 `provider` 段加载静态价格（含 context_over_200k），
+ * 供离线重算使用。文件不存在返回空数组；文件存在但解析失败时告警后返回空数组。
+ */
+function loadOpencodeProviders(): ProviderInfo[] {
+  const path = process.env.OPENCODE_CONFIG ?? `${homedir()}/.config/opencode/opencode.json`
+  if (!existsSync(path)) return []
+  try {
+    const raw = parseJsonc<{
+      provider?: Record<string, unknown>
+    }>(readFileSync(path, "utf8"))
+    const out: ProviderInfo[] = []
+    for (const [pid, pv] of Object.entries(raw.provider ?? {})) {
+      const po = pv as { models?: Record<string, unknown> } | undefined
+      if (!po?.models) continue
+      const models: ProviderInfo["models"] = {}
+      for (const [mid, mv] of Object.entries(po.models)) {
+        const mo = mv as { cost?: Record<string, unknown> } | undefined
+        const c = mo?.cost
+        if (!c || typeof c !== "object") continue
+        const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0)
+        const over = c.context_over_200k as Record<string, unknown> | undefined
+        models[mid] = {
+          cost: {
+            input: num(c.input),
+            output: num(c.output),
+            cache: { read: num(c.cache_read), write: num(c.cache_write) },
+            context_over_200k: over
+              ? {
+                  input: num(over.input),
+                  output: num(over.output),
+                  cache: { read: num(over.cache_read), write: num(over.cache_write) },
+                }
+              : undefined,
+          },
+        }
+      }
+      if (Object.keys(models).length > 0) out.push({ id: pid, models })
+    }
+    return out
+  } catch {
+    console.error(`warning: failed to read or parse ${path}; offline dynamic pricing is disabled`)
+    return []
+  }
+}
 
 function timestampSuffix(): string {
   const d = new Date()
@@ -342,6 +391,19 @@ function fmtCost(amount) {
   return "~" + COST_DISPLAY.symbol + v.toFixed(COST_DISPLAY.decimals)
 }
 
+/* Dynamic pricing: prefer recomputed dynCost when present. */
+function costOf(r) {
+  if (r && r.dynCost !== undefined && r.dynCost !== null) return r.dynCost
+  return r ? r.cost : 0
+}
+function fmtCostOf(r) {
+  if (!r) return "-"
+  if (r.dynCost !== undefined && r.dynCost !== null && Math.abs(r.dynCost - r.cost) > 1e-12) {
+    return "\u2248" + fmtCost(r.dynCost)
+  }
+  return fmtCost(r.cost)
+}
+
 function applyCostLabels() {
   var th = document.getElementById("thSessionCost")
   if (th) th.textContent = COST_DISPLAY.chartLabel
@@ -374,8 +436,8 @@ function scopePillClass(scope) {
 }
 
 function renderSummary(data) {
-  var ti = 0, to = 0, tcr = 0, tcw = 0, tc = 0, tt = 0
-  data.forEach(function(r){ ti+=r.input; to+=r.output; tcr+=r.cacheRead; tcw+=r.cacheWrite; tc+=r.cost })
+  var ti = 0, to = 0, tcr = 0, tcw = 0, tc = 0, tt = 0, dyn = 0
+  data.forEach(function(r){ ti+=r.input; to+=r.output; tcr+=r.cacheRead; tcw+=r.cacheWrite; tc+=costOf(r); if (r.dynCost != null) dyn++ })
   tt = ti+to+tcr+tcw
   var hits = hitValues(data)
   var avg = hits.length ? hits.reduce(function(s,h){return s+h},0)/hits.length : 0
@@ -388,7 +450,7 @@ function renderSummary(data) {
     {l:"Total Input", v:ti.toLocaleString(), s:"Out "+to.toLocaleString()},
     {l:"Cache Read", v:tcr.toLocaleString(), s:"Write "+tcw.toLocaleString()},
     {l:"Avg Hit Rate", v:avg.toFixed(1)+"%", s:hits.length+" plottable calls", c:cls},
-    {l:"Total Cost", v:fmtCost(tc), s:COST_DISPLAY.costUnit !== COST_DISPLAY.currency ? "raw "+COST_DISPLAY.costUnit+" in JSONL" : ""},
+    {l:"Total Cost", v:(dyn>0?"\u2248":"")+fmtCost(tc), s:COST_DISPLAY.costUnit !== COST_DISPLAY.currency ? "raw "+COST_DISPLAY.costUnit+" in JSONL" : ""},
     {l:"Models", v:models||"(none)", s:""},
     {l:"Date Range", v:data.length?data[0].created.slice(0,10):"-", s:data.length?"~ "+data[data.length-1].created.slice(0,10):""}
   ]
@@ -490,7 +552,7 @@ function buildHitCostChart(data) {
         { label:"Hit %", data:data.map(function(r){return r.hitPercent}), yAxisID:"y",
           borderColor:"#3fb950", backgroundColor:"#3fb95022", fill:true, tension:0.2,
           pointRadius:2, pointBackgroundColor:"#3fb950" },
-        { label:COST_DISPLAY.chartLabel, data:data.map(function(r){return convertCost(r.cost)}), yAxisID:"y1",
+        { label:COST_DISPLAY.chartLabel, data:data.map(function(r){return convertCost(costOf(r))}), yAxisID:"y1",
           borderColor:"#f85149", backgroundColor:"#f8514922", fill:true, tension:0.2,
           pointRadius:2, pointBackgroundColor:"#f85149" }
       ]
@@ -555,7 +617,7 @@ function renderSessionTable(data) {
       ti:rd.reduce(function(s,r){return s+r.input},0),
       to:rd.reduce(function(s,r){return s+r.output},0),
       tcr:rd.reduce(function(s,r){return s+r.cacheRead},0),
-      avg:avg, cost:rd.reduce(function(s,r){return s+r.cost},0),
+      avg:avg, cost:rd.reduce(function(s,r){return s+costOf(r)},0), dynUsed:rd.some(function(r){return r.dynCost != null}),
       avgTtft: ttfts.length ? ttfts.reduce(function(s,v){return s+v},0)/ttfts.length : null,
       avgTps: ttps.length ? ttps.reduce(function(s,v){return s+v},0)/ttps.length : null,
       avgTpot: tpots.length ? tpots.reduce(function(s,v){return s+v},0)/tpots.length : null,
@@ -569,7 +631,7 @@ function renderSessionTable(data) {
       '</td><td><span class="pill pill-model">'+esc(r.model)+'</span></td><td><span class="pill '+scopePillClass(r.scope)+'">'+esc(r.scope)+
       '</span></td><td class="num">'+r.calls+'</td><td class="num">'+(r.totalT/1e6).toFixed(2)+'M</td><td class="num">'+r.ti.toLocaleString()+
       '</td><td class="num">'+r.to.toLocaleString()+'</td><td class="num">'+r.tcr.toLocaleString()+
-      '</td><td class="num '+cls(r.avg)+'">'+r.avg.toFixed(1)+'%</td><td class="num">'+fmtCost(r.cost)+
+      '</td><td class="num '+cls(r.avg)+'">'+r.avg.toFixed(1)+'%</td><td class="num">'+(r.dynUsed?"\u2248":"")+fmtCost(r.cost)+
       '</td><td class="num">'+fmtTtft(r.avgTtft)+'</td><td class="num">'+fmtTps(r.avgTps)+
       '</td><td class="num">'+fmtTpot(r.avgTpot)+
       '</td><td>'+r.start.slice(0,19)+'</td></tr>'
@@ -584,6 +646,7 @@ function expandDetailGrid(r) {
       var rawCost = v
       v = String(rawCost) + " " + COST_DISPLAY.costUnit
       if (COST_DISPLAY.rate !== 1) v += " (" + fmtCost(rawCost) + ")"
+      if (r.dynCost != null && Math.abs(r.dynCost - r.cost) > 1e-12) v += " | dyn " + fmtCost(r.dynCost)
     }
     else if (typeof v === "boolean") v = v ? "true" : "false"
     else if (Array.isArray(v)) {
@@ -613,7 +676,7 @@ function renderDetailTable(data) {
       '<td class="num">'+r.cacheRead.toLocaleString()+'</td>'+
       '<td class="num">'+r.cacheWrite.toLocaleString()+'</td>'+
       '<td class="num '+cls(r.hitPercent)+'">'+hitPct+'</td>'+
-      '<td class="num">'+fmtCost(r.cost)+'</td>'+
+      '<td class="num">'+fmtCostOf(r)+'</td>'+
       '<td class="num">'+fmtDur(r.durationMs)+'</td>'+
       '<td class="num">'+fmtTtft(r.ttftMs)+'</td>'+
       '<td class="num">'+fmtTps(r.tps)+'</td>'+
@@ -716,6 +779,25 @@ const records = await loadRecords(paths)
 if (records.length === 0) {
   console.error("No valid records found.")
   process.exit(1)
+}
+
+// 动态计价离线重算：按每条记录的时刻 + 上下文档位注入 dynCost（前端优先展示）。
+{
+  const providers = loadOpencodeProviders()
+  const rules = loadPluginConfig().dynamicPricing
+  if (providers.length > 0) {
+    let injected = 0
+    for (const r of records) {
+      const dc = recomputeRecordCost(r, providers, rules)
+      if (dc !== null) {
+        r.dynCost = dc
+        injected++
+      }
+    }
+    if (injected > 0) {
+      console.error(`dynamic pricing: recomputed cost for ${injected}/${records.length} records`)
+    }
+  }
 }
 
 function loadCostContext(): { embed: CostDisplayEmbed; format: (n: number) => string } {

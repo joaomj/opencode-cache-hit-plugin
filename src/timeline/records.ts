@@ -65,6 +65,7 @@ export function assistantMessageToRecord(
     scope,
     messageKey: messageKeyFor(msg, sessionId),
     modelId: msg.modelID ?? "",
+    providerId: msg.providerID ?? "",
     created: msToISOString(timing.created),
     completedAt: timing.completedAt !== undefined ? msToISOString(timing.completedAt) : undefined,
     durationMs: timing.durationMs,

@@ -18,6 +18,7 @@ OpenCode TUI sidebar plugin: **cache hit rate**, **tokens**, **cost**, with **su
 | Token Speed | [docs/en/token-speed.md](docs/en/token-speed.md) | [docs/zh-CN/token-speed.md](docs/zh-CN/token-speed.md) |
 | TTFT Hybrid | [docs/en/ttft-hybrid.md](docs/en/ttft-hybrid.md) | [docs/zh-CN/ttft-hybrid.md](docs/zh-CN/ttft-hybrid.md) |
 | TTFT Troubleshooting | [docs/en/ttft-troubleshooting.md](docs/en/ttft-troubleshooting.md) | [docs/zh-CN/ttft-troubleshooting.md](docs/zh-CN/ttft-troubleshooting.md) |
+| Dynamic pricing (plan) | — | [docs/zh-CN/dynamic-pricing-plan.md](docs/zh-CN/dynamic-pricing-plan.md) |
 | TUI panel | [src/tui-panel/README.md](src/tui-panel/README.md) | [src/tui-panel/README.zh-CN.md](src/tui-panel/README.zh-CN.md) |
 | Migration plan | [docs/en/frontend-migration-plan.md](docs/en/frontend-migration-plan.md) | [docs/zh-CN/frontend-migration-plan.md](docs/zh-CN/frontend-migration-plan.md) |
 | Contributing / npm | [CONTRIBUTING.md](CONTRIBUTING.md) | — |
@@ -48,6 +49,7 @@ After moving or renaming exports: run full `bun test`; `tests/module-load.test.t
 - Example: [cache-hit.config.example.json](cache-hit.config.example.json) — **included in npm** `files`.
 - Runtime: `~/.config/opencode/cache-hit.json` (preferred) or `cache-hit.config.json` beside package root (legacy fallback); **not** published; gitignored.
 - Defaults: [src/plugin-config.ts](src/plugin-config.ts).
+- Dynamic pricing (`dynamicPricing`): time-of-day tiers + context tier (runtime `tiers`/`experimentalOver200K` normalized); see README § Dynamic pricing and [docs/zh-CN/dynamic-pricing-plan.md](docs/zh-CN/dynamic-pricing-plan.md). `levels` absolute prices default to USD/1M; non-USD prices convert via `cost.rate` (when the level currency matches the display currency) or the per-rule `"rate"` (USD → level currency).
 - Timeline log dir default: `~/.local/share/opencode/logs/cache-hit/`. Supports `~/` expansion in `timeline.dir`.
 
 ## npm publish

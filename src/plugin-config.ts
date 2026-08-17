@@ -1,5 +1,14 @@
-import { type CostDisplayConfig, normalizeCostDisplay, DEFAULT_COST_DISPLAY } from "./format-cost.ts"
+import { type CostDisplayConfig, normalizeCostDisplay, DEFAULT_COST_DISPLAY, resolveExchangeRate, CURRENCY_PRESETS } from "./format-cost.ts"
 import { resolveLang, type Lang } from "./i18n.ts"
+import {
+  type DynamicPricingConfig,
+  type DynamicPricingSchedule,
+  type ModelPricingRule,
+  DEFAULT_DYNAMIC_PRICING,
+} from "./dynamic-pricing/types.ts"
+import { parseClockTime } from "./dynamic-pricing/schedule.ts"
+
+export type { DynamicPricingConfig } from "./dynamic-pricing/types.ts"
 
 export type DisplayConfig = {
   /** `en` | `zh` | `auto` (follow system locale). Default `en`. */
@@ -103,6 +112,8 @@ export type PluginConfig = {
   display: DisplayConfig
   timeline: TimelineConfig
   cacheTTL: CacheTTLConfig
+  /** 动态计价：时段（peak/offpeak）与上下文分档（context_over_200k）。 */
+  dynamicPricing: DynamicPricingConfig
 }
 
 export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
@@ -110,6 +121,7 @@ export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
   display: { ...DEFAULT_DISPLAY },
   timeline: { ...DEFAULT_TIMELINE },
   cacheTTL: { ...DEFAULT_CACHE_TTL },
+  dynamicPricing: structuredClone(DEFAULT_DYNAMIC_PRICING),
 }
 
 const TOOL_SUMMARY_KEYS: ReadonlySet<string> = new Set([
@@ -233,15 +245,146 @@ export function parseDuration(raw: string): number | null {
   return Math.floor(value * multiplier)
 }
 
+function normalizeModelPricingRule(raw: unknown): ModelPricingRule {
+  const rule: ModelPricingRule = {}
+  if (!raw || typeof raw !== "object") return rule
+  const o = raw as Record<string, unknown>
+  if (typeof o.currency === "string" && o.currency.toUpperCase() in CURRENCY_PRESETS) {
+    rule.currency = o.currency.toUpperCase()
+  }
+  if (typeof o.rate === "number" && Number.isFinite(o.rate) && o.rate > 0) {
+    rule.rate = o.rate
+  }
+  const levels = o.levels
+  if (levels && typeof levels === "object") {
+    const out: Record<string, { input: number; output: number; cache: { read: number; write: number } }> = {}
+    for (const [level, v] of Object.entries(levels as Record<string, unknown>)) {
+      const lv = v as Record<string, unknown> | undefined
+      if (!lv || typeof lv !== "object") continue
+      const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0)
+      // 兼容两种写法：扁平 cacheRead/cacheWrite（文档/示例）与嵌套 cache:{read,write}（ModelCost 类型）。
+      const nestCache = lv.cache as { read?: unknown; write?: unknown } | undefined
+      out[level] = {
+        input: num(lv.input),
+        output: num(lv.output),
+        cache: {
+          read: num(lv.cacheRead ?? lv.cache_read ?? nestCache?.read),
+          write: num(lv.cacheWrite ?? lv.cache_write ?? nestCache?.write),
+        },
+      }
+    }
+    if (Object.keys(out).length > 0) rule.levels = out
+  }
+  const multipliers = o.multipliers
+  if (multipliers && typeof multipliers === "object") {
+    const out: Record<string, number> = {}
+    for (const [level, v] of Object.entries(multipliers as Record<string, unknown>)) {
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) out[level] = v
+    }
+    if (Object.keys(out).length > 0) rule.multipliers = out
+  }
+  if (typeof o.contextThreshold === "number" && Number.isFinite(o.contextThreshold) && o.contextThreshold > 0) {
+    rule.contextThreshold = Math.floor(o.contextThreshold)
+  }
+  return rule
+}
+
+function normalizeSchedule(raw: unknown): DynamicPricingSchedule {
+  if (!Array.isArray(raw)) return structuredClone(DEFAULT_DYNAMIC_PRICING.schedule)
+  const out: DynamicPricingSchedule = []
+  for (const item of raw) {
+    const o = item as Record<string, unknown> | undefined
+    if (!o || typeof o !== "object") continue
+    if (typeof o.level !== "string" || !Array.isArray(o.windows)) continue
+    const windows = o.windows
+      .map((w) => {
+        const ww = w as Record<string, unknown> | undefined
+        if (!ww || typeof ww !== "object") return null
+        const start = typeof ww.start === "string" ? parseClockTime(ww.start) : null
+        const end = typeof ww.end === "string" ? parseClockTime(ww.end) : null
+        if (start === null || end === null) return null
+        return { start, end }
+      })
+      .filter((w): w is { start: number; end: number } => w !== null)
+    if (windows.length > 0) out.push({ level: o.level, windows })
+  }
+  return out.length > 0 ? out : structuredClone(DEFAULT_DYNAMIC_PRICING.schedule)
+}
+
+export function normalizeDynamicPricingConfig(
+  raw: unknown,
+  opts?: { usdRate?: number; displayCurrency?: string },
+): DynamicPricingConfig {
+  const d = structuredClone(DEFAULT_DYNAMIC_PRICING)
+  if (!raw || typeof raw !== "object") return d
+  const o = raw as Record<string, unknown>
+  if (typeof o.enabled === "boolean") d.enabled = o.enabled
+  if (typeof o.timezone === "string" && o.timezone.length > 0) d.timezone = o.timezone
+  if (o.schedule !== undefined) d.schedule = normalizeSchedule(o.schedule)
+  if (typeof o.contextThreshold === "number" && Number.isFinite(o.contextThreshold) && o.contextThreshold > 0) {
+    d.contextThreshold = Math.floor(o.contextThreshold)
+  }
+  if (o.providers && typeof o.providers === "object") {
+    const providers: DynamicPricingConfig["providers"] = {}
+    for (const [pid, pv] of Object.entries(o.providers as Record<string, unknown>)) {
+      const po = pv as Record<string, unknown> | undefined
+      if (!po || typeof po !== "object") continue
+      const modelsRaw = po.models
+      if (!modelsRaw || typeof modelsRaw !== "object") continue
+      const models: Record<string, ModelPricingRule> = {}
+      for (const [mid, mv] of Object.entries(modelsRaw as Record<string, unknown>)) {
+        const rule = normalizeModelPricingRule(mv)
+        // 非 USD 的 levels 绝对价在加载时换算为内部 USD 口径，lookup 恒按 USD 计算。
+        // 汇率（USD → levels 币种）优先级：rule.rate > levelsCurrency===展示币种时 cost.rate
+        // > 无法推断时告警并视作 USD（避免用错误的展示汇率换算，如 EUR 除 USD→CNY）。
+        if (rule.levels && rule.currency && rule.currency !== "USD") {
+          let usdPerLevel: number | undefined = rule.rate
+          if (usdPerLevel === undefined && rule.currency === opts?.displayCurrency && opts?.usdRate && opts.usdRate > 0) {
+            usdPerLevel = opts.usdRate
+          }
+          if (usdPerLevel === undefined || usdPerLevel <= 0) {
+            console.error(
+              `dynamicPricing: cannot convert ${rule.currency} levels to USD for ${pid}/${mid} — ` +
+                `set "rate" (USD→${rule.currency}) or use cost.currency = ${rule.currency}; treating values as USD`,
+            )
+          } else {
+            for (const [level, rates] of Object.entries(rule.levels)) {
+              rule.levels[level] = {
+                input: rates.input / usdPerLevel,
+                output: rates.output / usdPerLevel,
+                cache: { read: rates.cache.read / usdPerLevel, write: rates.cache.write / usdPerLevel },
+              }
+            }
+            delete rule.currency
+          }
+        }
+        if (Object.keys(rule).length > 0) models[mid] = rule
+      }
+      if (Object.keys(models).length > 0) providers[pid] = { models }
+    }
+    if (Object.keys(providers).length > 0) d.providers = providers
+  }
+  return d
+}
+
 export function normalizePluginConfig(raw: unknown): PluginConfig {
   if (!raw || typeof raw !== "object") return structuredClone(DEFAULT_PLUGIN_CONFIG)
   const o = raw as Record<string, unknown>
   const cost = normalizeCostDisplay(raw)
   const displayRaw = o.display
+  // levels 非 USD 绝对价按展示汇率换算为内部 USD。可用汇率：模型级 rule.rate
+  // （USD → levels 币种）；或当 levels 币种与展示币种相同时，回退使用 cost.rate。
+  // 显示 USD、levels 为 CNY 等币种时两者不匹配，需要显式配置模型级 rate。
+  const usdRate =
+    cost.currency === "USD" ? (DEFAULT_COST_DISPLAY.rate ?? 6.77) : resolveExchangeRate(cost)
   return {
     cost,
     display: normalizeDisplayConfig(displayRaw),
     timeline: normalizeTimelineConfig(o.timeline),
     cacheTTL: normalizeCacheTTLConfig(o.cacheTTL),
+    dynamicPricing: normalizeDynamicPricingConfig(o.dynamicPricing, {
+      usdRate,
+      displayCurrency: cost.currency,
+    }),
   }
 }

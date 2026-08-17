@@ -1,13 +1,12 @@
 /** @jsxImportSource @opentui/solid */
-import { For, Show } from "solid-js"
+import { createMemo, For, Show } from "solid-js"
 import { TokenDetailRows } from "./cache-hit-rows.tsx"
 import type { CacheHitMetrics } from "./use-cache-hit-metrics.ts"
 import { aggregateSubAgents } from "./stats.ts"
-import { computeSubsSaved } from "./pricing.ts"
 import { formatTokenCount } from "./format-tokens.ts"
 import { formatSubAgentLabel, modelRowColor } from "./format-model.ts"
 import { TuiMetricRow, type PanelLayout } from "./tui-panel/index.ts"
-import type { ProviderInfo, SubAgentSummary } from "./types.ts"
+import type { SubAgentSummary } from "./types.ts"
 
 function subHasActivity(sub: SubAgentSummary): boolean {
   return sub.cost > 0 || sub.cacheRead > 0 || sub.cacheWrite > 0 || sub.input > 0
@@ -16,14 +15,30 @@ function subHasActivity(sub: SubAgentSummary): boolean {
 export function AgentsView(props: {
   m: CacheHitMetrics
   layout: PanelLayout
-  providers: ReadonlyArray<ProviderInfo>
   formatCost: (n: number) => string
   formatSpeed: (v: number | undefined) => string
 }) {
   const { m, layout } = props
   const total = () => aggregateSubAgents(m.subs())
 
-  const subsSaved = () => computeSubsSaved(m.subs(), props.providers)
+  const subsSaved = () => m.subsSaved()
+
+  // 子 agent 动态成本汇总：存在任一动态价时展示重算值（≈ 前缀）。
+  const shownSubCost = createMemo(() => {
+    const map = m.subAgentDynamicCosts()
+    let dynamic = false
+    let sum = 0
+    for (const sub of m.subs()) {
+      const rec = map.get(sub.id)
+      if (rec !== undefined && rec !== null) {
+        dynamic = true
+        sum += rec
+      } else {
+        sum += sub.cost
+      }
+    }
+    return { value: sum, approx: dynamic }
+  })
 
   return (
     <>
@@ -38,12 +53,12 @@ export function AgentsView(props: {
           />
         </Show>
       </TokenDetailRows>
-      <Show when={total().cost > 0}>
+      <Show when={shownSubCost().value > 0}>
         <TuiMetricRow
           pal={m.pal()}
           layout={layout}
           label={m.t().cost}
-          value={props.formatCost(total().cost)}
+          value={`${shownSubCost().approx ? m.t().approx : ""}${props.formatCost(shownSubCost().value)}`}
           fg={m.pal().success}
         />
       </Show>
