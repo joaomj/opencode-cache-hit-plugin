@@ -72,12 +72,13 @@ Published **as source** (TypeScript / TSX)—**no `dist/` build**. OpenCode load
 
 `prepublishOnly` runs `bun test`. Set `author` in `package.json` before publish if not already present.
 
-**Release**
+**Release** — tag-driven CI publish, no local `npm publish` needed:
 
 ```bash
-bun test
-npm publish --access public   # first time: npm login
+git tag vX.Y.Z && git push origin vX.Y.Z
 ```
+
+Pushing a `v*` tag triggers [.github/workflows/publish.yml](.github/workflows/publish.yml): it runs `bun test`, then `npm publish --provenance --access public` (requires the `NPM_TOKEN` repo secret; provenance uses the workflow's OIDC `id-token: write` permission). Check the result with `gh run list --workflow=publish.yml`.
 
 [opencode-visual-cache](https://www.npmjs.com/package/opencode-visual-cache) ships a `dist/` for its main export but still exposes `./tui` → source; we follow the source-only TUI entry for now.
 
