@@ -1,9 +1,7 @@
 {
-  "$comment": "lang: en | zh | auto (system locale). Default en.",
-  "currency": "CNY",
+  "$comment": "Language: en. Default en.",
+  "currency": "USD",
   "costUnit": "USD",
-  "rate": 6.77,
-  "$comment-rate": "Manual exchange-rate snapshot USD→currency (6.77 = USD→CNY at the time this was written; does not auto-update). Omit to keep the built-in default 6.77, or set \"currency\": \"USD\" to skip conversion. Current rates: xe.com, wise.com, oanda.com.",
   "display": {
     "lang": "en",
     "panelBorder": true

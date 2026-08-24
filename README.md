@@ -4,6 +4,8 @@
 
 OpenCode TUI sidebar plugin for compact per-session cache and usage metrics.
 
+This repository is a fork of the original [opencode-cache-hit project](https://github.com/zhumengzhu/opencode-cache-hit). It keeps the plugin focused on compact per-session metrics.
+
 ## Panel
 
 The panel shows one session only and is limited to the metrics listed below.
@@ -18,20 +20,19 @@ The panel stops refreshing speed when the session has no new completed calls.
 
 ## Install
 
-Use the OpenCode command palette:
+Use this fork from a local checkout:
 
-1. Press `Ctrl+P` and select **install plugin**.
-2. Install it for all projects.
-3. Install `opencode-cache-hit@latest`.
+1. Clone the repository.
+2. Check out `fork/session-metrics-panel`.
+3. Add the checkout path to `~/.config/opencode/tui.json` or `tui.jsonc`.
 4. Restart OpenCode.
 
-For a manual install, add the plugin to `~/.config/opencode/tui.json` or
-`tui.jsonc`:
+Example configuration:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["opencode-cache-hit@latest"]
+  "plugin": ["/path/to/opencode-cache-hit"]
 }
 ```
 
@@ -46,9 +47,8 @@ Configuration files accept JSONC. The example file is strict JSON.
 
 ```json
 {
-  "currency": "CNY",
-  "costUnit": "USD",
-  "rate": 6.77
+  "currency": "USD",
+  "costUnit": "USD"
 }
 ```
 
@@ -56,17 +56,14 @@ Configuration files accept JSONC. The example file is strict JSON.
 |-------|---------|
 | `costUnit` | Currency reported by OpenCode, usually `USD` |
 | `currency` | Currency shown in the panel |
-| `rate` | Manual conversion rate from `costUnit` to `currency` |
 
-Use `"currency": "USD"` and `"costUnit": "USD"` when conversion is not
-needed. Supported display currencies are `USD`, `CNY`, `EUR`, `GBP`, and `JPY`.
+Use `"currency": "USD"` and `"costUnit": "USD"` for the documented setup.
 
 ### Display
 
 ```json
 {
   "display": {
-    "lang": "en",
     "panelBorder": true
   }
 }
@@ -74,9 +71,8 @@ needed. Supported display currencies are `USD`, `CNY`, `EUR`, `GBP`, and `JPY`.
 
 | Field | Default | Meaning |
 |-------|---------|---------|
-| `lang` | `"en"` | `en`, `zh`, or `auto` |
 | `panelBorder` | `true` | Show the panel border |
-| `mainHitLabel` | localized label | Override the Cache Hit label |
+| `mainHitLabel` | `Cache Hit` | Override the Cache Hit label |
 
 ### Timeline logs
 
@@ -108,12 +104,7 @@ summaries are disabled by default because command input can contain secrets.
 
 ## Updating
 
-OpenCode can pin the first package resolved for `@latest`. If an update is not
-visible, remove the cached package and reinstall it:
-
-```bash
-rm -rf ~/.cache/opencode/packages/opencode-cache-hit@latest
-```
+Pull the latest changes into the local checkout, then restart OpenCode.
 
 ## Development
 
