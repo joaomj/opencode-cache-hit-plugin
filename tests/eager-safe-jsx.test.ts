@@ -24,7 +24,7 @@ describe("eager-safe JSX (npm plugin loads under bun's generic JSX transform)", 
       if (optChain) problems.push(`optional chain then bare deref: ${optChain[0]}`)
       expect(
         problems,
-        `${path.relative(srcDir, file)}: opencode loads this raw TSX with bun's eager JSX (solid transform skips node_modules, see AGENTS.md "Eager-safe JSX"). These patterns throw on undefined before <Show>/<For> guards run. Use ?. / ?? / a local accessor instead.`,
+        `${path.relative(srcDir, file)}: OpenCode loads this raw TSX with eager JSX. These patterns can throw on undefined before <Show>/<For> guards run. Use ?. / ?? / a local accessor instead.`,
       ).toEqual([])
     })
   }

@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { Show, type JSX } from "solid-js"
+import { Show } from "solid-js"
 import type { UiStrings } from "./i18n.ts"
 import { formatTokenCount } from "./format-tokens.ts"
 import { TuiMetricRow } from "./tui-panel/index.ts"
@@ -8,7 +8,7 @@ import type { SessionSnapshot } from "./types.ts"
 
 export type TokenSnap = Pick<
   SessionSnapshot,
-  "cacheRead" | "cacheWrite" | "input" | "output" | "reasoning"
+  "cacheRead" | "cacheWrite" | "input" | "output"
 >
 
 export function TokenDetailRows(props: {
@@ -16,7 +16,6 @@ export function TokenDetailRows(props: {
   layout: PanelLayout
   t: UiStrings
   snap: TokenSnap
-  children?: JSX.Element
 }) {
   const tok = (n: number) => formatTokenCount(n)
   return (
@@ -42,7 +41,7 @@ export function TokenDetailRows(props: {
       <TuiMetricRow
         pal={props.pal}
         layout={props.layout}
-        label={props.t.miss}
+        label={props.t.input}
         value={tok(props.snap.input)}
         unit={props.t.tok}
       />
@@ -53,16 +52,6 @@ export function TokenDetailRows(props: {
         value={tok(props.snap.output)}
         unit={props.t.tok}
       />
-      <Show when={props.snap.reasoning > 0}>
-        <TuiMetricRow
-          pal={props.pal}
-          layout={props.layout}
-          label={props.t.reasoning}
-          value={tok(props.snap.reasoning)}
-          unit={props.t.tok}
-        />
-      </Show>
-      {props.children}
     </>
   )
 }

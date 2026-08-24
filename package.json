@@ -1,7 +1,7 @@
 {
   "name": "opencode-cache-hit",
   "version": "0.7.2",
-  "description": "OpenCode TUI sidebar: prompt cache hit rate, tokens & cost with sub-agent rollup. Works with opencode-visual-cache; optional per-call JSONL timeline.",
+  "description": "OpenCode TUI sidebar with session cache hit rate, speed, token usage, and cost.",
   "type": "module",
   "license": "MIT",
   "author": "mengzhu.zhu <mengzhu.loveyou@gmail.com>",
@@ -23,9 +23,6 @@
     "token",
     "cost",
     "cost-tracking",
-    "sub-agent",
-    "agent",
-    "opencode-visual-cache",
     "jsonl",
     "timeline"
   ],
@@ -39,22 +36,13 @@
     "src",
     "cache-hit.config.example.json",
     "LICENSE",
-    "README.md",
-    "README.zh-CN.md",
-    "AGENTS.md",
-    "CONTRIBUTING.md",
-    "docs",
-    "scripts"
+    "README.md"
   ],
   "scripts": {
     "test": "bun test tests/",
     "check": "bun test tests/",
     "syntax": "bun test tests/module-load.test.ts",
-    "prepublishOnly": "bun test tests/",
-    "prepare": "simple-git-hooks"
-  },
-  "simple-git-hooks": {
-    "pre-push": "bun test tests/"
+    "prepublishOnly": "bun test tests/"
   },
   "dependencies": {
     "solid-js": "^1.9.0"
@@ -66,7 +54,6 @@
     "@opentui/solid": ">=0.2.0"
   },
   "devDependencies": {
-    "@opentui/solid": "^0.4.5",
-    "simple-git-hooks": "^2.13.1"
+    "@opentui/solid": "^0.4.5"
   }
 }

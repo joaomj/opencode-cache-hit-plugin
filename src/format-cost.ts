@@ -74,7 +74,7 @@ export function normalizeCostDisplay(raw: unknown): CostDisplayConfig {
   return cfg
 }
 
-/** Resolved params for static HTML dashboards (timeline-dashboard.ts). */
+/** Resolved cost parameters used by the panel formatter. */
 export type CostDisplayEmbed = {
   currency: CurrencyCode
   costUnit: CurrencyCode

@@ -23,21 +23,14 @@ export function messageKeyFor(msg: AssistantMessage, sessionId: string): string 
   const id = msg.id ?? msg.messageID
   if (typeof id === "string" && id.length > 0) return `${sessionId}:${id}`
   const created = msg.time?.created ?? 0
-  return `${sessionId}:${created}:${msg.modelID ?? ""}`
+  return `${sessionId}:${created}`
 }
 
 export function assistantMessageToRecord(
   msg: AssistantMessage,
   sessionId: string,
-  rootSessionId: string,
-  scope: "main" | "child",
   recordedAt: number,
-  firstPartTime?: number,
-  ttftSource?: "sdk" | "tui",
   toolDurations?: ToolDurationRecord[],
-  itlP50?: number,
-  itlP90?: number,
-  itlCount?: number,
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
@@ -47,25 +40,15 @@ export function assistantMessageToRecord(
   const output = t.output ?? 0
   const reasoning = t.reasoning ?? 0
   const tokens = output + reasoning
-  const ttftMs = firstPartTime !== undefined && firstPartTime > timing.created
-    ? firstPartTime - timing.created
-    : undefined
-  const genTimeMs = generationDurationMs(timing, firstPartTime)
+  const genTimeMs = generationDurationMs(timing)
   const tps = genTimeMs !== undefined && genTimeMs > 0 && tokens > 0
     ? (tokens / genTimeMs) * 1000
-    : undefined
-  const tpot = genTimeMs !== undefined && genTimeMs >= 500 && tokens > 1
-    ? genTimeMs / (tokens - 1)
     : undefined
   return {
     schema: 1,
     recordedAt: msToISOString(recordedAt),
     sessionId,
-    rootSessionId,
-    scope,
     messageKey: messageKeyFor(msg, sessionId),
-    modelId: msg.modelID ?? "",
-    providerId: msg.providerID ?? "",
     created: msToISOString(timing.created),
     completedAt: timing.completedAt !== undefined ? msToISOString(timing.completedAt) : undefined,
     durationMs: timing.durationMs,
@@ -78,15 +61,8 @@ export function assistantMessageToRecord(
     cost: msg.cost ?? 0,
     hitPercent: perMessageHitPercent(msg),
     skippedForHit,
-    ttftMs,
-    ttftSource,
     tps,
-    tpot,
-    itlP50,
-    itlP90,
-    itlCount,
     finish: msg.finish,
     toolDurations,
   }
 }
-

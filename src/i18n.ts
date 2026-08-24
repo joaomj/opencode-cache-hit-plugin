@@ -3,12 +3,11 @@ export type Lang = "en" | "zh"
 export type UiStrings = {
   title: string
   hit: string
-  totalHit: string
+  speed: string
+  input: string
   read: string
   write: string
-  miss: string
   out: string
-  reasoning: string
   cost: string
   saved: string
   rate: string
@@ -18,39 +17,17 @@ export type UiStrings = {
   hitFolded: string
   noData: string
   secDetail: string
-  secModel: string
-  model: string
-  secAgents: string
-  /** Shown in Agents section header: totals are child sessions only, not the parent session. */
-  agentsScopeHint: string
-  secTTL: string
   tok: string
-  secSpeed: string
-  lastCall: string
-  avg: string
-  now: string
-  trend: string
-  ttft: string
-  /** Shown in Speed → Now when no stream is active (not a missing-data dash). */
-  streamingIdle: string
-  /** Prefix for session cost recomputed from dynamic pricing. */
-  approx: string
-  /** Time-of-day tier badges appended to the Rate label. */
-  peakBadge: string
-  offpeakBadge: string
-  /** Context tier badge shown when over the context threshold. */
-  over200kBadge: string
 }
 
 const EN: UiStrings = {
   title: "Cache Hit",
   hit: "Hit",
-  totalHit: "Total Hit:",
+  speed: "Speed:",
+  input: "Input:",
   read: "Read:",
   write: "Write:",
-  miss: "Miss:",
   out: "Out:",
-  reasoning: "Reason:",
   cost: "Cost:",
   saved: "Saved:",
   rate: "Rate:",
@@ -60,34 +37,17 @@ const EN: UiStrings = {
   hitFolded: "hit",
   noData: "Waiting for cache data...",
   secDetail: "Detail",
-  secModel: "Model",
-  model: "Model:",
-  secAgents: "Agents",
-  agentsScopeHint: " · sub-sessions",
-  secTTL: "TTL:",
   tok: "tok",
-  secSpeed: "Speed",
-  lastCall: "Last:",
-  avg: "Avg:",
-  now: "Now:",
-  trend: "Trend:",
-  ttft: "TTFT:",
-  streamingIdle: "·",
-  approx: "≈",
-  peakBadge: "peak",
-  offpeakBadge: "offpeak",
-  over200kBadge: ">200k",
 }
 
 const ZH: UiStrings = {
   title: "缓存命中",
   hit: "命中率",
-  totalHit: "总命中:",
+  speed: "速度:",
+  input: "输入:",
   read: "缓存读:",
   write: "缓存写:",
-  miss: "未命中:",
   out: "输出:",
-  reasoning: "推理:",
   cost: "费用:",
   saved: "节省:",
   rate: "单价:",
@@ -97,23 +57,7 @@ const ZH: UiStrings = {
   hitFolded: "命中",
   noData: "等待缓存数据...",
   secDetail: "明细",
-  secModel: "模型",
-  model: "模型:",
-  secAgents: "子 Agent",
-  agentsScopeHint: " · 仅子会话",
-  secTTL: "存活:",
   tok: "tok",
-  secSpeed: "速度",
-  lastCall: "最近:",
-  avg: "平均:",
-  now: "实时:",
-  trend: "趋势:",
-  ttft: "首Token:",
-  streamingIdle: "·",
-  approx: "≈",
-  peakBadge: "高峰",
-  offpeakBadge: "空闲",
-  over200kBadge: ">200k",
 }
 
 export function resolveLang(raw: unknown): Lang {

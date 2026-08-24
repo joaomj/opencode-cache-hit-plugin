@@ -1,5 +1,3 @@
-import type { FirstPartTimeTracker } from "../first-part-time.ts"
-import type { ItlTracker } from "../itl-tracker.ts"
 import type { ToolTimingTracker } from "../tool-timing.ts"
 import type { TimelineConfig } from "../plugin-config.ts"
 import type { AssistantMessage } from "../types.ts"
@@ -16,24 +14,19 @@ import type { LlmCallRecord } from "./types.ts"
 export type TimelineCollector = {
   /** Process a single message from a message.updated event. */
   handleMessage: (sessionID: string, msg: AssistantMessage) => void
-  resetForRootChange: () => void
+  reset: () => void
   dispose: () => void
   memoryRecords: () => readonly LlmCallRecord[]
 }
 
 export function createTimelineCollector(opts: {
   getConfig: () => TimelineConfig
-  getRootSessionId: () => string
-  getChildIds: () => readonly string[]
-  firstPartTime: FirstPartTimeTracker
+  getSessionId: () => string
   toolTiming: ToolTimingTracker
-  itlTracker?: ItlTracker
   /** Test hook: replace disk append */
   append?: (logPath: string, record: LlmCallRecord, config: TimelineConfig) => Promise<void>
 }): TimelineCollector {
-  const ttft = opts.firstPartTime
   const toolTiming = opts.toolTiming
-  const itlTracker = opts.itlTracker
   const defaultAppend = opts.append ?? ((path: string, record: LlmCallRecord, cfg: TimelineConfig) =>
     appendTimelineRecord(path, record, {
       maxLinesPerFile: cfg.maxLinesPerFile,
@@ -69,17 +62,7 @@ export function createTimelineCollector(opts: {
     const config = opts.getConfig()
     if (!config.enabled) return
 
-    const rootId = opts.getRootSessionId()
-    if (!rootId) return
-
-    let scope: "main" | "child"
-    if (sessionID === rootId) {
-      scope = "main"
-    } else if (opts.getChildIds().includes(sessionID)) {
-      scope = "child"
-    } else {
-      return
-    }
+    if (sessionID !== opts.getSessionId()) return
 
     if (msg.role !== "assistant") return
     if (!config.logSummaryMessages && msg.summary === true) return
@@ -87,19 +70,11 @@ export function createTimelineCollector(opts: {
     maybePurge(config)
 
     const msgID = msg.id ?? msg.messageID ?? ""
-    const q = itlTracker?.getQuantiles(msgID)
     const rec = assistantMessageToRecord(
       msg,
       sessionID,
-      rootId,
-      scope,
       Date.now(),
-      ttft.get().get(msgID),
-      ttft.getSource(msgID),
       toolTiming.getDurations(msgID),
-      q && q.p50,
-      q && q.p90,
-      q && q.count,
     )
     if (!rec) return
     if (!config.flushIncomplete && !rec.isComplete) return
@@ -117,7 +92,7 @@ export function createTimelineCollector(opts: {
 
   return {
     handleMessage,
-    resetForRootChange: () => {
+    reset: () => {
       memory = []
     },
     dispose: () => {

@@ -15,16 +15,14 @@ describe("resolveLang", () => {
 describe("getUiStrings", () => {
   test("english labels use ASCII colon", () => {
     const t = getUiStrings("en")
-    expect(t.miss).toBe("Miss:")
     expect(t.hit).toBe("Hit")
-    expect(t.totalHit).toBe("Total Hit:")
+    expect(t.speed).toBe("Speed:")
     expect(t.title).toBe("Cache Hit")
+    expect(t.input).toBe("Input:")
     expect(t.read).toBe("Read:")
-    expect(t.agentsScopeHint).toContain("sub-session")
   })
 
-  test("chinese agents scope hint", () => {
-    expect(getUiStrings("zh").agentsScopeHint).toBe(" · 仅子会话")
+  test("chinese speed label", () => {
+    expect(getUiStrings("zh").speed).toBe("速度:")
   })
 })
-

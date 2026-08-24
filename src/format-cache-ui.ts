@@ -1,9 +1,3 @@
-/** deltaPercent: change in hit % points. Visual-cache trendLabel (0 → "-"). */
-export function formatTrendLabel(deltaPercent: number): string {
-  const t = deltaPercent
-  return (t > 0 ? "\u2191" : t < 0 ? "\u2193" : "-") + (t !== 0 ? Math.abs(t).toFixed(1) + "%" : "")
-}
-
 /** One decimal place, e.g. 98.8% */
 export function formatPercentOneDecimal(percent0to100: number): string {
   return (Math.floor(percent0to100 * 10) / 10).toFixed(1) + "%"

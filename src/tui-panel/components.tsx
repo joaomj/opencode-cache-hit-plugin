@@ -140,7 +140,7 @@ export function TuiMetricRow(props: {
   unit?: string
   /** Whole line (label + value + unit). Ignored when `labelFg` / `valueFg` set. */
   fg?: string
-  /** Label-only color (e.g. sub-agent model); value stays `valueFg` or muted. */
+  /** Label-only color; value stays `valueFg` or muted. */
   labelFg?: string
   valueFg?: string
 }) {
@@ -175,16 +175,12 @@ export function TuiHitRow(props: {
   pct: string
   barColor: string
   textColor: string
-  trend?: { text: string; color: string }
 }) {
   return (
     <text>
       <span style={{ fg: props.textColor }}>{props.label} </span>
       <span style={{ fg: props.barColor }}>[{props.bar}] </span>
       <span style={{ fg: props.textColor }}>{props.pct}</span>
-      <Show when={props.trend}>
-        <span style={{ fg: props.trend?.color }}> {props.trend?.text}</span>
-      </Show>
     </text>
   )
 }

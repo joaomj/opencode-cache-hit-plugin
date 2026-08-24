@@ -17,12 +17,11 @@ describe("justifyRow", () => {
 })
 
 describe("computeHitBarWidth", () => {
-  test("hit line fits gauge including trend", () => {
+  test("hit line fits gauge", () => {
     const w = 28
-    const trend = "\u21930.0%"
-    const barW = computeHitBarWidth("Hit", w, trend, true)
+    const barW = computeHitBarWidth("Hit", w)
     const bar = formatHitBar(0.999, barW)
-    const hitLine = `Hit [${bar}] 99.9% ${trend}`
+    const hitLine = `Hit [${bar}] 99.9%`
     expect(visualWidth(hitLine)).toBe(w)
     expect(visualWidth(justifyRow("Total Hit:", "98.8%", w))).toBe(w)
   })

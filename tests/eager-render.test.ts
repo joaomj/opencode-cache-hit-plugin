@@ -10,7 +10,7 @@ import { TuiHitRow } from "../src/tui-panel/components.tsx"
  * rendering with an undefined optional prop must not throw.
  */
 describe("eager render smoke (npm plugin load path)", () => {
-  test("TuiHitRow with trend=undefined does not throw", async () => {
+  test("TuiHitRow renders without optional feature props", async () => {
     await expect(
       testRender(() =>
         TuiHitRow({
@@ -19,22 +19,6 @@ describe("eager render smoke (npm plugin load path)", () => {
           pct: "50%",
           barColor: "blue",
           textColor: "white",
-          trend: undefined,
-        }),
-      ),
-    ).resolves.toBeDefined()
-  })
-
-  test("TuiHitRow with a trend value renders", async () => {
-    await expect(
-      testRender(() =>
-        TuiHitRow({
-          label: "Hit",
-          bar: "||",
-          pct: "50%",
-          barColor: "blue",
-          textColor: "white",
-          trend: { text: "\u21932.0%", color: "green" },
         }),
       ),
     ).resolves.toBeDefined()

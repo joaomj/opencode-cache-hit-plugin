@@ -28,20 +28,11 @@ describe("load-config paths", () => {
     expect(cfg.display.lang).toBeTruthy()
   })
 
-  test("cloneDefault includes cacheTTL — regression for crash on config.providers access", () => {
-    const cfg = cloneDefault()
-    expect(cfg.cacheTTL).toBeDefined()
-    expect(cfg.cacheTTL.providers).toBeDefined()
-    expect(typeof cfg.cacheTTL.enabled).toBe("boolean")
-  })
-
   test("cloneDefault returns deep copy — mutations do not pollute DEFAULT_PLUGIN_CONFIG", () => {
     const cfg = cloneDefault()
-    cfg.cacheTTL.providers["evil"] = "1m"
     cfg.timeline.toolSummary = false
     cfg.display.lang = "zh"
 
-    expect(DEFAULT_PLUGIN_CONFIG.cacheTTL.providers).toEqual({})
     expect(DEFAULT_PLUGIN_CONFIG.timeline.toolSummary).toEqual({ allTools: true, bash: false })
     expect(DEFAULT_PLUGIN_CONFIG.display.lang).toBe("en")
   })

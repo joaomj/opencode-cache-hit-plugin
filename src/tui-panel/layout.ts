@@ -1,4 +1,4 @@
-/** Terminal layout primitives (visual-width aware, opencode-visual-cache compatible). */
+/** Terminal layout primitives with visual-width-aware alignment. */
 
 export const MIN_PANEL_WIDTH = 20
 export const DEFAULT_PANEL_WIDTH = 28
@@ -61,17 +61,13 @@ export function truncateVisual(s: string, maxCols: number): string {
 export function computeHitBarWidth(
   hitLabel: string,
   rowWidth: number,
-  trendText: string,
-  showTrend: boolean,
 ): number {
-  const trendSpace = showTrend ? HIT_LABEL_GAP + visualWidth(trendText) : 0
   const overhead =
     visualWidth(hitLabel) +
     HIT_LABEL_GAP +
     HIT_BAR_BRACKETS +
     HIT_BAR_GAP +
-    HIT_PCT_FIXED_WIDTH +
-    trendSpace
+    HIT_PCT_FIXED_WIDTH
   return Math.max(3, rowWidth - overhead)
 }
 
