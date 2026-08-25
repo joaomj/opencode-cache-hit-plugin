@@ -1,16 +1,16 @@
 {
   "name": "opencode-cache-hit",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "OpenCode TUI sidebar with session cache hit rate, speed, token usage, and cost.",
   "type": "module",
   "license": "MIT",
-  "author": "mengzhu.zhu <mengzhu.loveyou@gmail.com>",
+  "author": "Joao Marcos (joaomj)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zhumengzhu/opencode-cache-hit"
+    "url": "https://github.com/joaomj/opencode-cache-hit"
   },
-  "homepage": "https://github.com/zhumengzhu/opencode-cache-hit#readme",
-  "bugs": "https://github.com/zhumengzhu/opencode-cache-hit/issues",
+  "homepage": "https://github.com/joaomj/opencode-cache-hit#readme",
+  "bugs": "https://github.com/joaomj/opencode-cache-hit/issues",
   "keywords": [
     "opencode",
     "opencode-plugin",

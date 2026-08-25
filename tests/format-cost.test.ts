@@ -27,8 +27,8 @@ describe("createCostFormatter", () => {
   })
 
   test("custom symbol", () => {
-    const fmt = createCostFormatter({ currency: "CNY", costUnit: "USD", rate: 1, symbol: "元", decimals: 2 })
-    expect(fmt(1)).toBe("~元1.00")
+    const fmt = createCostFormatter({ currency: "CNY", costUnit: "USD", rate: 1, symbol: "¤", decimals: 2 })
+    expect(fmt(1)).toBe("~¤1.00")
   })
 })
 
@@ -58,8 +58,8 @@ describe("createRateFormatter", () => {
   })
 
   test("uses custom symbol", () => {
-    const fmt = createRateFormatter({ currency: "CNY", costUnit: "USD", rate: 1, symbol: "元" })
-    expect(fmt(2.5)).toBe("元2.50")
+    const fmt = createRateFormatter({ currency: "CNY", costUnit: "USD", rate: 1, symbol: "¤" })
+    expect(fmt(2.5)).toBe("¤2.50")
   })
 
   test("handles zero rate", () => {

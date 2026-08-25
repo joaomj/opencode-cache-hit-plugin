@@ -1,4 +1,4 @@
-export type Lang = "en" | "zh"
+export type Lang = "en"
 
 export type UiStrings = {
   title: string
@@ -40,39 +40,10 @@ const EN: UiStrings = {
   tok: "tok",
 }
 
-const ZH: UiStrings = {
-  title: "缓存命中",
-  hit: "命中率",
-  speed: "速度:",
-  input: "输入:",
-  read: "缓存读:",
-  write: "缓存写:",
-  out: "输出:",
-  cost: "费用:",
-  saved: "节省:",
-  rate: "单价:",
-  rateIn: "/M 输入",
-  rateOut: "/M 输出",
-  rateCache: "/M 缓存",
-  hitFolded: "命中",
-  noData: "等待缓存数据...",
-  secDetail: "明细",
-  tok: "tok",
-}
-
-export function resolveLang(raw: unknown): Lang {
-  if (raw === "zh" || raw === "cn" || raw === "zh-CN") return "zh"
-  if (raw === "en") return "en"
-  if (raw === "auto") {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase().startsWith("zh") ? "zh" : "en"
-    } catch {
-      return "en"
-    }
-  }
+export function resolveLang(_raw: unknown): Lang {
   return "en"
 }
 
-export function getUiStrings(lang: Lang): UiStrings {
-  return lang === "zh" ? ZH : EN
+export function getUiStrings(_lang: Lang): UiStrings {
+  return EN
 }

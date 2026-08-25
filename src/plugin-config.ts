@@ -2,7 +2,7 @@ import { type CostDisplayConfig, normalizeCostDisplay, DEFAULT_COST_DISPLAY } fr
 import { resolveLang, type Lang } from "./i18n.ts"
 
 export type DisplayConfig = {
-  /** `en` | `zh` | `auto` (follow system locale). Default `en`. */
+  /** `en` | `auto` (use English labels). Default `en`. */
   lang: Lang | "auto"
   /** Optional override for the hit-rate line prefix (default from i18n). */
   mainHitLabel?: string

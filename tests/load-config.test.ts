@@ -31,7 +31,7 @@ describe("load-config paths", () => {
   test("cloneDefault returns deep copy — mutations do not pollute DEFAULT_PLUGIN_CONFIG", () => {
     const cfg = cloneDefault()
     cfg.timeline.toolSummary = false
-    cfg.display.lang = "zh"
+    cfg.display.lang = "auto"
 
     expect(DEFAULT_PLUGIN_CONFIG.timeline.toolSummary).toEqual({ allTools: true, bash: false })
     expect(DEFAULT_PLUGIN_CONFIG.display.lang).toBe("en")
@@ -47,7 +47,7 @@ describe("load-config paths", () => {
         '  // line comment',
         '  "currency": "USD",',
         '  "costUnit": "USD",',
-        '  "display": { "lang": "zh" }, // trailing comma + comment',
+        '  "display": { "lang": "auto" }, // trailing comma + comment',
         '  /* block comment */ "timeline": { "enabled": false },',
         "}",
       ].join("\n"),
@@ -57,7 +57,7 @@ describe("load-config paths", () => {
       expect(cfg).not.toBeNull()
       expect(cfg?.cost.currency).toBe("USD")
       expect(cfg?.cost.costUnit).toBe("USD")
-      expect(cfg?.display.lang).toBe("zh")
+      expect(cfg?.display.lang).toBe("auto")
       expect(cfg?.timeline.enabled).toBe(false)
     } finally {
       rmSync(dir, { recursive: true, force: true })

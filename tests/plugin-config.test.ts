@@ -73,10 +73,10 @@ describe("normalizePluginConfig", () => {
       currency: "CNY",
       costUnit: "USD",
       rate: 7,
-      display: { lang: "zh" },
+      display: { lang: "auto" },
     })
     expect(c.cost.rate).toBe(7)
-    expect(c.display.lang).toBe("zh")
+    expect(c.display.lang).toBe("auto")
     expect(c.timeline.enabled).toBe(false)
   })
 })

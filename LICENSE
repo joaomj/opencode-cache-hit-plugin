@@ -1,7 +1,11 @@
 MIT License
 
-Copyright (c) 2026 zhumengzhu
-Copyright (c) 2026 Joao Marcos (joaomj)
+Copyright (c) 2026 Joao Marcos (https://github.com/joaomj)
+Copyright (c) 2026 zhumengzhu (https://github.com/zhumengzhu)
+
+This project is maintained by Joao Marcos (https://github.com/joaomj) and is
+based on the original opencode-cache-hit project by zhumengzhu
+(https://github.com/zhumengzhu) at https://github.com/zhumengzhu/opencode-cache-hit.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

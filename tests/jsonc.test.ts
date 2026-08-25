@@ -30,7 +30,7 @@ describe("stripJsonc", () => {
   })
 
   test("keeps a string ending with a comma next to a real trailing comma", () => {
-    // 易误判场景：字符串值以逗号结尾 + 真正的尾逗号。回溯只删字符串外的尾逗号。
+    // Ambiguous case: a string ends with a comma next to a real trailing comma.
     expect(stripJsonc(`{"a": "x,",}`)).toBe(`{"a": "x,"}`)
     expect(stripJsonc(`{"a": {"b": "x,",},}`)).toBe(`{"a": {"b": "x,"}}`)
   })

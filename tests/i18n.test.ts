@@ -7,8 +7,9 @@ describe("resolveLang", () => {
     expect(resolveLang("en")).toBe("en")
   })
 
-  test("supports zh", () => {
-    expect(resolveLang("zh")).toBe("zh")
+  test("uses English for automatic and unsupported locales", () => {
+    expect(resolveLang("auto")).toBe("en")
+    expect(resolveLang("fr")).toBe("en")
   })
 })
 
@@ -22,7 +23,4 @@ describe("getUiStrings", () => {
     expect(t.read).toBe("Read:")
   })
 
-  test("chinese speed label", () => {
-    expect(getUiStrings("zh").speed).toBe("速度:")
-  })
 })

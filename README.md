@@ -4,7 +4,7 @@
 
 OpenCode TUI sidebar plugin for compact per-session cache and usage metrics.
 
-This repository is a fork of the original [opencode-cache-hit project](https://github.com/zhumengzhu/opencode-cache-hit). It keeps the plugin focused on compact per-session metrics.
+This project is maintained by [Joao Marcos](https://github.com/joaomj). It is based on the original [opencode-cache-hit project](https://github.com/zhumengzhu/opencode-cache-hit), created by [zhumengzhu](https://github.com/zhumengzhu). It keeps the plugin focused on compact per-session metrics.
 
 ## Panel
 
@@ -20,18 +20,18 @@ The panel stops refreshing speed when the session has no new completed calls.
 
 ## Install
 
-Use this fork from a local checkout:
+Use this project from a local checkout:
 
-1. Clone the repository.
-2. Check out `fork/session-metrics-panel`.
-3. Add the checkout path to `~/.config/opencode/tui.json` or `tui.jsonc`.
+1. Clone `https://github.com/joaomj/opencode-cache-hit`.
+2. Check out `main`.
+3. Add the checkout path to `~/.config/opencode/opencode.json` or `opencode.jsonc`.
 4. Restart OpenCode.
 
 Example configuration:
 
 ```jsonc
 {
-  "$schema": "https://opencode.ai/tui.json",
+  "$schema": "https://opencode.ai/config.json",
   "plugin": ["/path/to/opencode-cache-hit"]
 }
 ```
@@ -104,7 +104,7 @@ summaries are disabled by default because command input can contain secrets.
 
 ## Updating
 
-Pull the latest changes into the local checkout, then restart OpenCode.
+Pull the latest changes from `main`, then restart OpenCode.
 
 ## Development
 
