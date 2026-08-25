@@ -7,10 +7,10 @@
   "author": "Joao Marcos (joaomj)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/joaomj/opencode-cache-hit"
+    "url": "https://github.com/joaomj/opencode-cache-hit-standalone"
   },
-  "homepage": "https://github.com/joaomj/opencode-cache-hit#readme",
-  "bugs": "https://github.com/joaomj/opencode-cache-hit/issues",
+  "homepage": "https://github.com/joaomj/opencode-cache-hit-standalone#readme",
+  "bugs": "https://github.com/joaomj/opencode-cache-hit-standalone/issues",
   "keywords": [
     "opencode",
     "opencode-plugin",

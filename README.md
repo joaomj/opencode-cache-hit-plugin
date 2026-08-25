@@ -22,7 +22,7 @@ The panel stops refreshing speed when the session has no new completed calls.
 
 Use this project from a local checkout:
 
-1. Clone `https://github.com/joaomj/opencode-cache-hit`.
+1. Clone `https://github.com/joaomj/opencode-cache-hit-standalone`.
 2. Check out `main`.
 3. Add the checkout path to `~/.config/opencode/opencode.json` or `opencode.jsonc`.
 4. Restart OpenCode.
