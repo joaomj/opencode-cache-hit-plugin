@@ -4,14 +4,13 @@ export function mainSessionHasStats(main: SessionSnapshot): boolean {
   return (
     main.cacheRead > 0 ||
     main.cacheWrite > 0 ||
-    main.cost > 0 ||
     main.input > 0 ||
     main.output > 0
   )
 }
 
 export function emptySessionSnapshot(): SessionSnapshot {
-  return { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, cost: 0 }
+  return { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 }
 }
 
 export function aggregateFromSessionObject(session: SessionObject): SessionSnapshot {
@@ -23,7 +22,6 @@ export function aggregateFromSessionObject(session: SessionObject): SessionSnaps
     reasoning: t?.reasoning ?? 0,
     cacheRead: c?.read ?? 0,
     cacheWrite: c?.write ?? 0,
-    cost: session.cost ?? 0,
   }
 }
 
@@ -32,8 +30,7 @@ export function aggregateSessionFromMessages(messages: readonly AssistantMessage
     output = 0,
     reasoning = 0,
     cacheRead = 0,
-    cacheWrite = 0,
-    cost = 0
+    cacheWrite = 0
   for (const msg of messages) {
     if (msg.role !== "assistant") continue
     const t = msg.tokens ?? {}
@@ -42,9 +39,8 @@ export function aggregateSessionFromMessages(messages: readonly AssistantMessage
     reasoning += t.reasoning ?? 0
     cacheRead += t.cache?.read ?? 0
     cacheWrite += t.cache?.write ?? 0
-    cost += msg.cost ?? 0
   }
-  return { input, output, reasoning, cacheRead, cacheWrite, cost }
+  return { input, output, reasoning, cacheRead, cacheWrite }
 }
 
 export function cacheHitRatio(cacheRead: number, input: number): number {

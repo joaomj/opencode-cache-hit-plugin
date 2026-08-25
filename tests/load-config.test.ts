@@ -37,7 +37,7 @@ describe("load-config paths", () => {
     expect(DEFAULT_PLUGIN_CONFIG.display.lang).toBe("en")
   })
 
-  test("parses JSONC configs — comments and trailing commas", () => {
+  test("parses JSONC configs and ignores removed cost fields", () => {
     const dir = mkdtempSync(join(tmpdir(), "cache-hit-"))
     const path = join(dir, "cache-hit.json")
     writeFileSync(
@@ -55,8 +55,7 @@ describe("load-config paths", () => {
     try {
       const cfg = tryRead(path)
       expect(cfg).not.toBeNull()
-      expect(cfg?.cost.currency).toBe("USD")
-      expect(cfg?.cost.costUnit).toBe("USD")
+      expect("cost" in (cfg ?? {})).toBe(false)
       expect(cfg?.display.lang).toBe("auto")
       expect(cfg?.timeline.enabled).toBe(false)
     } finally {

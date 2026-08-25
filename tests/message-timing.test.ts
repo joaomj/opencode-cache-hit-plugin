@@ -28,14 +28,31 @@ describe("timingFromAssistantMessage", () => {
 })
 
 describe("generationDurationMs", () => {
-  test("uses the full completed turn", () => {
+  test("uses first generated part to completion", () => {
     const timing = timingFromAssistantMessage({
       role: "assistant",
       time: { created: 1000, completed: 3000 },
     })!
-    expect(generationDurationMs(timing)).toBe(2000)
+    expect(generationDurationMs(timing, 1500)).toBe(1500)
   })
 
+  test("does not fall back when first generated part is unavailable", () => {
+    const timing = timingFromAssistantMessage({
+      role: "assistant",
+      time: { created: 1000, completed: 3000 },
+    })!
+    expect(generationDurationMs(timing)).toBeUndefined()
+  })
+
+  test("rejects invalid first generated part timestamps", () => {
+    const timing = timingFromAssistantMessage({
+      role: "assistant",
+      time: { created: 1000, completed: 3000 },
+    })!
+    expect(generationDurationMs(timing, 1000)).toBeUndefined()
+    expect(generationDurationMs(timing, 3000)).toBeUndefined()
+    expect(generationDurationMs(timing, 3500)).toBeUndefined()
+  })
 })
 
 describe("formatTimingShort", () => {

@@ -4,7 +4,6 @@ export type SessionSnapshot = {
   reasoning: number
   cacheRead: number
   cacheWrite: number
-  cost: number
 }
 
 export type AssistantMessage = {
@@ -53,7 +52,6 @@ export function isPartUpdatedEvent(
 
 /** Session aggregate from `api.state.session.get()` — DB-level totals, not capped by message limit. */
 export type SessionObject = {
-  cost?: number
   tokens?: {
     input?: number
     output?: number

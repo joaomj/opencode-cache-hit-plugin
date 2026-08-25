@@ -1,4 +1,5 @@
 import type { AssistantMessage } from "./types.ts"
+import { earliestPartStart } from "./first-part-time.ts"
 import { generationDurationMs, timingFromAssistantMessage } from "./message-timing.ts"
 
 export const SESSION_HISTORY_LIMIT = 10_000
@@ -24,18 +25,26 @@ export function sessionMessageKey(message: AssistantMessage): string | undefined
   return message.id ?? message.messageID
 }
 
-export function speedContribution(
+function speedContributionAt(
   message: AssistantMessage,
-  firstPartTime?: ReadonlyMap<string, number>,
+  firstPartTime: number | undefined,
 ): SessionSpeedTotals | undefined {
   if (!isInteractiveAssistantMessage(message)) return undefined
   const timing = timingFromAssistantMessage(message)
   if (!timing?.isComplete) return undefined
   const tokens = (message.tokens?.output ?? 0) + (message.tokens?.reasoning ?? 0)
   if (tokens <= 0) return undefined
-  const durationMs = generationDurationMs(timing, firstPartTime?.get(sessionMessageKey(message) ?? ""))
+  const durationMs = generationDurationMs(timing, firstPartTime)
   if (durationMs === undefined || durationMs < 500) return undefined
   return { tokens, durationMs }
+}
+
+export function speedContribution(
+  message: AssistantMessage,
+  firstPartTime?: ReadonlyMap<string, number>,
+): SessionSpeedTotals | undefined {
+  const key = sessionMessageKey(message)
+  return speedContributionAt(message, key ? firstPartTime?.get(key) : undefined)
 }
 
 export function addSessionSpeed(
@@ -81,6 +90,8 @@ export async function loadSessionSpeed(opts: {
   sessionId: string
   directory: string
   fallback: SessionSpeedTotals
+  firstPartTime?: ReadonlyMap<string, number>
+  part?: (messageID: string) => ReadonlyArray<{ type: string; time?: { start?: number } }> | undefined
 }): Promise<SessionHistoryResult> {
   const request = opts.client.messages
   if (!request) return { speed: opts.fallback, messageKeys: [], complete: false }
@@ -106,8 +117,14 @@ export async function loadSessionSpeed(opts: {
     if (!info || typeof info !== "object") return { speed: opts.fallback, messageKeys: [], complete: false }
     const message = info as AssistantMessage
     if (message.role !== "assistant") continue
-    speed = addSessionSpeed(speed, speedContribution(message))
     const key = sessionMessageKey(message)
+    const created = message.time?.created
+    const partTime = key ? opts.firstPartTime?.get(key) : undefined
+    const recoveredPartTime =
+      partTime === undefined && key && typeof created === "number"
+        ? earliestPartStart(opts.part?.(key), created)
+        : undefined
+    speed = addSessionSpeed(speed, speedContributionAt(message, partTime ?? recoveredPartTime))
     if (key) messageKeys.push(key)
   }
 

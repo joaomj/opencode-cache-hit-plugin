@@ -23,7 +23,6 @@ export function CacheHitSidebar(props: {
   display: DisplayConfig
   main: Accessor<SessionSnapshot>
   speed: Accessor<SessionSpeedTotals>
-  formatCost: (amount: number) => string
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
   const detail = createSectionFold(true)
@@ -67,7 +66,7 @@ export function CacheHitSidebar(props: {
             fallback={<TuiPanelNoData pal={m.pal()} layout={layout} message={m.t().noData} />}
           >
             <TuiPanelSep pal={m.pal()} layout={layout} />
-            <MainSessionView m={m} layout={layout} detail={detail} formatCost={props.formatCost} />
+            <MainSessionView m={m} layout={layout} detail={detail} />
           </Show>
         </Show>
       </TuiPanel>

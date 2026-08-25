@@ -11,8 +11,7 @@ This project is maintained by [Joao Marcos](https://github.com/joaomj). It is ba
 The panel shows one session only and is limited to the metrics listed below.
 
 - **Cache Hit**: cache-read tokens as a percentage of input plus cache-read tokens
-- **Speed**: weighted completed-call speed in `tok/s`
-- **Cost**: the total cost reported by OpenCode for the session
+- **Speed**: weighted generation speed from first generated part to completion in `tok/s`; calls without this timing are excluded
 - **Input / Output**: input and generated token totals
 - **Cache Read / Cache Write**: prompt-cache token totals
 
@@ -42,22 +41,6 @@ Copy `cache-hit.config.example.json` to
 ## Configuration
 
 Configuration files accept JSONC. The example file is strict JSON.
-
-### Cost
-
-```json
-{
-  "currency": "USD",
-  "costUnit": "USD"
-}
-```
-
-| Field | Meaning |
-|-------|---------|
-| `costUnit` | Currency reported by OpenCode, usually `USD` |
-| `currency` | Currency shown in the panel |
-
-Use `"currency": "USD"` and `"costUnit": "USD"` for the documented setup.
 
 ### Display
 

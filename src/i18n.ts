@@ -8,7 +8,6 @@ export type UiStrings = {
   read: string
   write: string
   out: string
-  cost: string
   saved: string
   rate: string
   rateIn: string
@@ -28,7 +27,6 @@ const EN: UiStrings = {
   read: "Read:",
   write: "Write:",
   out: "Out:",
-  cost: "Cost:",
   saved: "Saved:",
   rate: "Rate:",
   rateIn: "/M in",

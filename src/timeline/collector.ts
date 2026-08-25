@@ -23,6 +23,7 @@ export function createTimelineCollector(opts: {
   getConfig: () => TimelineConfig
   getSessionId: () => string
   toolTiming: ToolTimingTracker
+  firstPartTime?: (messageID: string) => number | undefined
   /** Test hook: replace disk append */
   append?: (logPath: string, record: LlmCallRecord, config: TimelineConfig) => Promise<void>
 }): TimelineCollector {
@@ -75,6 +76,7 @@ export function createTimelineCollector(opts: {
       sessionID,
       Date.now(),
       toolTiming.getDurations(msgID),
+      opts.firstPartTime?.(msgID),
     )
     if (!rec) return
     if (!config.flushIncomplete && !rec.isComplete) return

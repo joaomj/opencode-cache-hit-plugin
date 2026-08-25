@@ -26,10 +26,21 @@ export function timingFromAssistantMessage(msg: AssistantMessage): MessageTiming
   }
 }
 
-/** Completed turn duration for speed metrics. */
-export function generationDurationMs(timing: MessageTiming): number | undefined {
+/** Generation duration from the first generated part to completion. */
+export function generationDurationMs(
+  timing: MessageTiming,
+  firstPartTime?: number,
+): number | undefined {
   if (!timing.isComplete || timing.completedAt === undefined) return undefined
-  return timing.durationMs
+  if (
+    firstPartTime === undefined ||
+    !Number.isFinite(firstPartTime) ||
+    firstPartTime <= timing.created ||
+    firstPartTime >= timing.completedAt
+  ) {
+    return undefined
+  }
+  return timing.completedAt - firstPartTime
 }
 
 export function formatTimingShort(ms: number): string {

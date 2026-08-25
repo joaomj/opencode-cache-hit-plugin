@@ -68,16 +68,13 @@ describe("normalizeTimelineConfig", () => {
 })
 
 describe("normalizePluginConfig", () => {
-  test("merges cost and display", () => {
+  test("merges display and timeline config", () => {
     const c = normalizePluginConfig({
-      currency: "CNY",
-      costUnit: "USD",
-      rate: 7,
       display: { lang: "auto" },
+      timeline: { enabled: true },
     })
-    expect(c.cost.rate).toBe(7)
     expect(c.display.lang).toBe("auto")
-    expect(c.timeline.enabled).toBe(false)
+    expect(c.timeline.enabled).toBe(true)
   })
 })
 

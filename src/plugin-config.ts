@@ -1,4 +1,3 @@
-import { type CostDisplayConfig, normalizeCostDisplay, DEFAULT_COST_DISPLAY } from "./format-cost.ts"
 import { resolveLang, type Lang } from "./i18n.ts"
 
 export type DisplayConfig = {
@@ -80,13 +79,11 @@ export const DEFAULT_TIMELINE: TimelineConfig = {
 }
 
 export type PluginConfig = {
-  cost: CostDisplayConfig
   display: DisplayConfig
   timeline: TimelineConfig
 }
 
 export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
-  cost: { ...DEFAULT_COST_DISPLAY },
   display: { ...DEFAULT_DISPLAY },
   timeline: { ...DEFAULT_TIMELINE },
 }
@@ -165,10 +162,8 @@ export function normalizeDisplayConfig(raw: unknown): DisplayConfig {
 export function normalizePluginConfig(raw: unknown): PluginConfig {
   if (!raw || typeof raw !== "object") return structuredClone(DEFAULT_PLUGIN_CONFIG)
   const o = raw as Record<string, unknown>
-  const cost = normalizeCostDisplay(raw)
   const displayRaw = o.display
   return {
-    cost,
     display: normalizeDisplayConfig(displayRaw),
     timeline: normalizeTimelineConfig(o.timeline),
   }

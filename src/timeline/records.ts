@@ -31,6 +31,7 @@ export function assistantMessageToRecord(
   sessionId: string,
   recordedAt: number,
   toolDurations?: ToolDurationRecord[],
+  firstPartTime?: number,
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
@@ -40,7 +41,7 @@ export function assistantMessageToRecord(
   const output = t.output ?? 0
   const reasoning = t.reasoning ?? 0
   const tokens = output + reasoning
-  const genTimeMs = generationDurationMs(timing)
+  const genTimeMs = generationDurationMs(timing, firstPartTime)
   const tps = genTimeMs !== undefined && genTimeMs > 0 && tokens > 0
     ? (tokens / genTimeMs) * 1000
     : undefined

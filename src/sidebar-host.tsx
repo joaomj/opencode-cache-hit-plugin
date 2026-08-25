@@ -7,6 +7,7 @@ import { createTimelineCollector } from "./timeline/collector.ts"
 import { createToolTimingTracker, type ToolPartEventData } from "./tool-timing.ts"
 import { isPartUpdatedEvent } from "./types.ts"
 import type { AssistantMessage, OpenCodeTuiApi } from "./types.ts"
+import { createFirstPartTimeTracker, earliestPartStart } from "./first-part-time.ts"
 import { aggregateFromSessionObject, aggregateSessionFromMessages, emptySessionSnapshot, mainSessionHasStats } from "./stats.ts"
 import {
   addSessionSpeed,
@@ -24,11 +25,11 @@ export function CacheHitSidebarHost(props: {
   theme: Record<string, unknown>
   display: DisplayConfig
   timeline: TimelineConfig
-  formatCost: (amount: number) => string
   api: OpenCodeTuiApi
 }) {
   const [refreshTick, setRefreshTick] = createSignal(0)
   const [speedTotals, setSpeedTotals] = createSignal<SessionSpeedTotals>(EMPTY_SESSION_SPEED)
+  const firstPartTracker = createFirstPartTimeTracker()
   let speedLoadGeneration = 0
   let seenSpeedMessages = new Set<string>()
   let pendingSpeedMessages = new Map<string, SessionSpeedTotals>()
@@ -45,12 +46,14 @@ export function CacheHitSidebarHost(props: {
         getConfig: () => props.timeline,
         getSessionId: () => props.sessionId,
         toolTiming,
+        firstPartTime: (messageID) => firstPartTracker.get().get(messageID),
       })
     : undefined
 
   onCleanup(() => {
     toolTiming?.dispose()
     timeline?.dispose()
+    firstPartTracker.dispose()
   })
 
   const mainSnap = createMemo(() => {
@@ -68,13 +71,22 @@ export function CacheHitSidebarHost(props: {
       : emptySessionSnapshot()
   })
 
+  const seedFirstPartTime = (message: AssistantMessage) => {
+    const messageID = sessionMessageKey(message)
+    const created = message.time?.created
+    if (!messageID || typeof created !== "number") return
+    const start = earliestPartStart(props.api.state.part?.(messageID), created)
+    if (start !== undefined && firstPartTracker.handlePart(messageID, "text", start)) bumpRefresh()
+  }
+
   const resetSpeed = () => {
     const sid = props.sessionId
     speedLoadGeneration++
     seenSpeedMessages = new Set()
     pendingSpeedMessages = new Map()
     const messages = sid ? (props.api.state.session.messages(sid) ?? []) as AssistantMessage[] : []
-    const fallback = aggregateSessionSpeed(messages)
+    for (const message of messages) seedFirstPartTime(message)
+    const fallback = aggregateSessionSpeed(messages, firstPartTracker.get())
     setSpeedTotals(fallback)
     if (!sid || !props.api.client.session.messages) return
 
@@ -84,6 +96,8 @@ export function CacheHitSidebarHost(props: {
       sessionId: sid,
       directory: props.api.state.path.directory,
       fallback,
+      firstPartTime: firstPartTracker.get(),
+      part: props.api.state.part,
     }).then((result) => {
       if (generation !== speedLoadGeneration) return
       let totals = result.speed
@@ -102,6 +116,7 @@ export function CacheHitSidebarHost(props: {
     void props.api.state.path.directory
     timeline?.reset()
     toolTiming?.reset()
+    firstPartTracker.reset()
     resetSpeed()
   })
 
@@ -110,8 +125,9 @@ export function CacheHitSidebarHost(props: {
       const msg = event.properties?.info as (AssistantMessage & { sessionID?: string }) | undefined
       const sid = msg?.sessionID
       if (sid === props.sessionId && msg?.role === "assistant") {
+        seedFirstPartTime(msg)
         const key = sessionMessageKey(msg)
-        const contribution = speedContribution(msg)
+        const contribution = speedContribution(msg, firstPartTracker.get())
         if (msg.time?.completed !== undefined && contribution && key && !seenSpeedMessages.has(key)) {
           seenSpeedMessages.add(key)
           pendingSpeedMessages.set(key, contribution)
@@ -125,14 +141,16 @@ export function CacheHitSidebarHost(props: {
   })
 
   createEffect(() => {
-    if (!timeline || !toolTiming) return
-    const unsub1 = props.api.event.on("message.part.updated", (event) => {
+    const unsub = props.api.event.on("message.part.updated", (event) => {
       if (!isPartUpdatedEvent(event)) return
       const { part } = event.properties
-      if (part.type === "tool") toolTiming.handleToolPart(part.messageID, part as ToolPartEventData)
+      if (typeof part.time?.start === "number" && firstPartTracker.handlePart(part.messageID, part.type, part.time.start)) {
+        bumpRefresh()
+      }
+      if (part.type === "tool") toolTiming?.handleToolPart(part.messageID, part as ToolPartEventData)
     })
     onCleanup(() => {
-      unsub1?.()
+      unsub?.()
     })
   })
 
@@ -143,7 +161,6 @@ export function CacheHitSidebarHost(props: {
       display={props.display}
       main={mainSnap}
       speed={speedTotals}
-      formatCost={props.formatCost}
     />
   )
 }

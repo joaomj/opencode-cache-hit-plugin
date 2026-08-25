@@ -7,7 +7,6 @@ export function MainSessionView(props: {
   m: CacheHitMetrics
   layout: PanelLayout
   detail: SectionFold
-  formatCost: (n: number) => string
 }) {
   const { m, layout } = props
   return (
@@ -28,12 +27,6 @@ export function MainSessionView(props: {
         onToggle={props.detail.toggle}
       >
         <TokenDetailRows pal={m.pal()} layout={layout} t={m.t()} snap={m.main()} />
-        <TuiMetricRow
-          pal={m.pal()}
-          layout={layout}
-          label={m.t().cost}
-          value={props.formatCost(m.main().cost)}
-        />
       </TuiSection>
     </>
   )

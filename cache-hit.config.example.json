@@ -1,7 +1,5 @@
 {
   "$comment": "Language: en. Default en.",
-  "currency": "USD",
-  "costUnit": "USD",
   "display": {
     "lang": "en",
     "panelBorder": true

@@ -1,7 +1,7 @@
 {
   "name": "opencode-cache-hit",
   "version": "0.8.0",
-  "description": "OpenCode TUI sidebar with session cache hit rate, speed, token usage, and cost.",
+  "description": "OpenCode TUI sidebar with session cache hit rate, speed, and token usage.",
   "type": "module",
   "license": "MIT",
   "author": "Joao Marcos (joaomj)",

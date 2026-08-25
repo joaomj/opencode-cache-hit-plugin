@@ -14,7 +14,6 @@ describe("aggregateFromSessionObject", () => {
 
   test("reads aggregate fields from session object", () => {
     const snap = aggregateFromSessionObject({
-      cost: 0.123,
       tokens: {
         input: 1000,
         output: 500,
@@ -22,7 +21,6 @@ describe("aggregateFromSessionObject", () => {
         cache: { read: 8000, write: 2000 },
       },
     })
-    expect(snap.cost).toBe(0.123)
     expect(snap.input).toBe(1000)
     expect(snap.output).toBe(500)
     expect(snap.reasoning).toBe(100)
@@ -31,8 +29,7 @@ describe("aggregateFromSessionObject", () => {
   })
 
   test("handles missing tokens", () => {
-    const snap = aggregateFromSessionObject({ cost: 0.05 })
-    expect(snap.cost).toBe(0.05)
+    const snap = aggregateFromSessionObject({})
     expect(snap.input).toBe(0)
     expect(snap.cacheRead).toBe(0)
   })
@@ -47,11 +44,9 @@ describe("aggregateSessionFromMessages", () => {
     const snap = aggregateSessionFromMessages([
       {
         role: "assistant",
-        cost: 0.005,
         tokens: { input: 100, output: 50, cache: { read: 500 } },
       },
     ])
-    expect(snap.cost).toBe(0.005)
     expect(snap.cacheRead).toBe(500)
   })
 })
