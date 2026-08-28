@@ -29,13 +29,17 @@ export type AssistantMessage = {
 export type StreamPart = {
   type: string
   text?: string
-  time?: { start?: number }
+  synthetic?: boolean
+  ignored?: boolean
+  time?: { start?: number; end?: number }
 }
 
 export type PartUpdatedPart = {
   type: string
   messageID: string
-  time?: { start?: number }
+  synthetic?: boolean
+  ignored?: boolean
+  time?: { start?: number; end?: number }
 }
 
 export function isPartUpdatedEvent(

@@ -1,4 +1,5 @@
 import type { AssistantMessage } from "./types.ts"
+import type { VisibleTextTiming } from "./first-part-time.ts"
 
 /** Milliseconds since epoch (OpenCode SDK v2). */
 export type MessageTiming = {
@@ -26,21 +27,14 @@ export function timingFromAssistantMessage(msg: AssistantMessage): MessageTiming
   }
 }
 
-/** Generation duration from the first generated part to completion. */
+/** Generation duration from the first visible text to the last visible text. */
 export function generationDurationMs(
-  timing: MessageTiming,
-  firstPartTime?: number,
+  _timing: MessageTiming,
+  textTiming?: VisibleTextTiming,
 ): number | undefined {
-  if (!timing.isComplete || timing.completedAt === undefined) return undefined
-  if (
-    firstPartTime === undefined ||
-    !Number.isFinite(firstPartTime) ||
-    firstPartTime <= timing.created ||
-    firstPartTime >= timing.completedAt
-  ) {
-    return undefined
-  }
-  return timing.completedAt - firstPartTime
+  if (!textTiming || !Number.isFinite(textTiming.start) || !Number.isFinite(textTiming.end)) return undefined
+  if (textTiming.end <= textTiming.start) return undefined
+  return textTiming.end - textTiming.start
 }
 
 export function formatTimingShort(ms: number): string {

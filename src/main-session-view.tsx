@@ -18,7 +18,8 @@ export function MainSessionView(props: {
         barColor={m.hitColor()}
         textColor={m.pal().text}
       />
-      <TuiMetricRow pal={m.pal()} layout={layout} label={m.t().speed} value={m.speedLabel()} />
+      <TuiMetricRow pal={m.pal()} layout={layout} label={m.t().lastTurnSpeed} value={m.lastTurnSpeedLabel()} />
+      <TuiMetricRow pal={m.pal()} layout={layout} label={m.t().sessionSpeed} value={m.sessionSpeedLabel()} />
       <TuiSection
         pal={m.pal()}
         layout={layout}

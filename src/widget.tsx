@@ -2,7 +2,7 @@
 import { createSignal, Show, type Accessor } from "solid-js"
 import type { DisplayConfig } from "./plugin-config.ts"
 import type { SessionSnapshot } from "./types.ts"
-import type { SessionSpeedTotals } from "./session-metrics.ts"
+import type { SessionSpeedMetrics } from "./session-metrics.ts"
 import { PLUGIN_VERSION } from "./version.ts"
 import { MainSessionView } from "./main-session-view.tsx"
 import { useCacheHitMetrics } from "./use-cache-hit-metrics.ts"
@@ -22,7 +22,7 @@ export function CacheHitSidebar(props: {
   theme: Record<string, unknown>
   display: DisplayConfig
   main: Accessor<SessionSnapshot>
-  speed: Accessor<SessionSpeedTotals>
+  speed: Accessor<SessionSpeedMetrics>
 }) {
   const [panelOpen, setPanelOpen] = createSignal(true)
   const detail = createSectionFold(true)

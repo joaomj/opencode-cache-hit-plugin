@@ -1,8 +1,10 @@
-import { generationDurationMs, timingFromAssistantMessage } from "../message-timing.ts"
+import { timingFromAssistantMessage } from "../message-timing.ts"
 import { perMessageHitPercent } from "../stats.ts"
 import type { AssistantMessage } from "../types.ts"
 import type { LlmCallRecord } from "./types.ts"
 import type { ToolDurationRecord } from "../tool-timing.ts"
+import { computeSessionSpeed, speedContributionForTiming } from "../session-metrics.ts"
+import type { VisibleTextTiming } from "../first-part-time.ts"
 
 /** Convert milliseconds timestamp to ISO 8601 with local timezone offset. */
 export function msToISOString(ms: number): string {
@@ -31,7 +33,7 @@ export function assistantMessageToRecord(
   sessionId: string,
   recordedAt: number,
   toolDurations?: ToolDurationRecord[],
-  firstPartTime?: number,
+  textTiming?: VisibleTextTiming,
 ): LlmCallRecord | null {
   if (msg.role !== "assistant") return null
   const timing = timingFromAssistantMessage(msg)
@@ -40,11 +42,8 @@ export function assistantMessageToRecord(
   const skippedForHit = msg.summary === true
   const output = t.output ?? 0
   const reasoning = t.reasoning ?? 0
-  const tokens = output + reasoning
-  const genTimeMs = generationDurationMs(timing, firstPartTime)
-  const tps = genTimeMs !== undefined && genTimeMs > 0 && tokens > 0
-    ? (tokens / genTimeMs) * 1000
-    : undefined
+  const contribution = speedContributionForTiming(msg, textTiming)
+  const tps = contribution ? computeSessionSpeed(contribution) : undefined
   return {
     schema: 1,
     recordedAt: msToISOString(recordedAt),

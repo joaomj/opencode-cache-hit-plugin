@@ -17,6 +17,7 @@ describe("assistantMessageToRecord", () => {
       {
         role: "assistant",
         id: "m1",
+        finish: "stop",
         time: { created: 1000, completed: 3000 },
         tokens: { input: 10, output: 20, reasoning: 30, cache: { read: 90, write: 2 } },
         cost: 0.25,
@@ -24,7 +25,7 @@ describe("assistantMessageToRecord", () => {
       "s1",
       5000,
       undefined,
-      1500,
+      { start: 1500, end: 3000 },
     )
     expect(rec).not.toBeNull()
     expect(rec!.sessionId).toBe("s1")
@@ -34,7 +35,7 @@ describe("assistantMessageToRecord", () => {
     expect(rec!.cacheRead).toBe(90)
     expect(rec!.cacheWrite).toBe(2)
     expect(rec!.cost).toBe(0.25)
-    expect(rec!.tps).toBeCloseTo(33.333, 2)
+    expect(rec!.tps).toBeCloseTo(12.667, 2)
   })
 
   test("preserves finish reason", () => {

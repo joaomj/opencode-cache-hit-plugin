@@ -18,6 +18,8 @@ describe("getUiStrings", () => {
     const t = getUiStrings("en")
     expect(t.hit).toBe("Hit")
     expect(t.speed).toBe("Speed:")
+    expect(t.lastTurnSpeed).toBe("Last turn:")
+    expect(t.sessionSpeed).toBe("Session:")
     expect(t.title).toBe("Cache Hit")
     expect(t.input).toBe("Input:")
     expect(t.read).toBe("Read:")

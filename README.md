@@ -11,11 +11,31 @@ This project is maintained by [Joao Marcos](https://github.com/joaomj). It is ba
 The panel shows one session only and is limited to the metrics listed below.
 
 - **Cache Hit**: cache-read tokens as a percentage of input plus cache-read tokens
-- **Speed**: weighted generation speed from first generated part to completion in `tok/s`; calls without this timing are excluded
+- **Last turn**: weighted output speed for the last completed user turn in `tok/s`
+- **Session**: weighted output speed for all completed calls in the session in `tok/s`
 - **Input / Output**: input and generated token totals
 - **Cache Read / Cache Write**: prompt-cache token totals
 
-The panel stops refreshing speed when the session has no new completed calls.
+Speed uses the first visible text timestamp and the last visible text timestamp.
+It counts output tokens minus one. It excludes reasoning tokens, tool time,
+failed calls, tool-only calls, and samples shorter than 250 milliseconds.
+
+The **Last turn** value stays on the last completed turn while the current turn
+is active. The **Session** value uses total eligible output tokens divided by
+total eligible generation time.
+
+## Design References
+
+The speed metrics use ideas from these OpenCode changes:
+
+- [PR #42112](https://github.com/anomalyco/opencode/pull/42112) proposed
+  first-to-last-token throughput with output-only counting and sample filters.
+- [PR #45265](https://github.com/anomalyco/opencode/pull/45265) added native
+  token throughput for OpenCode v2 with stream-completion timing and output-only
+  counting.
+
+This plugin applies the first-to-last visible text rule through the current
+plugin API and provides both last-turn and session aggregates.
 
 ## Install
 

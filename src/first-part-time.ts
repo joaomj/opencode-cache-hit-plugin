@@ -1,49 +1,95 @@
-const STREAM_PART_TYPES = new Set(["text", "reasoning"])
+const VISIBLE_PART_TYPE = "text"
+
+export type VisibleTextTiming = {
+  start: number
+  end?: number
+}
 
 export type FirstPartTimeTracker = {
-  handlePart: (messageID: string, partType: string, startTime: number) => boolean
-  get: () => ReadonlyMap<string, number>
+  handlePart: (messageID: string, partType: string, startTime: number, endTime?: number) => boolean
+  get: () => ReadonlyMap<string, VisibleTextTiming>
   reset: () => void
   dispose: () => void
 }
 
 export function createFirstPartTimeTracker(): FirstPartTimeTracker {
   let disposed = false
-  const firstPartTime = new Map<string, number>()
+  const textTiming = new Map<string, VisibleTextTiming>()
 
-  const handlePart = (messageID: string, partType: string, startTime: number): boolean => {
-    if (disposed || !messageID || !STREAM_PART_TYPES.has(partType) || !Number.isFinite(startTime)) {
+  const handlePart = (messageID: string, partType: string, startTime: number, endTime?: number): boolean => {
+    if (disposed || !messageID || partType !== VISIBLE_PART_TYPE || !Number.isFinite(startTime)) {
       return false
     }
-    const existing = firstPartTime.get(messageID)
-    if (existing !== undefined && startTime >= existing) return false
-    firstPartTime.set(messageID, startTime)
+    const existing = textTiming.get(messageID)
+    const next: VisibleTextTiming = {
+      start: existing ? Math.min(existing.start, startTime) : startTime,
+      ...(existing?.end !== undefined ? { end: existing.end } : {}),
+    }
+    if (Number.isFinite(endTime) && endTime > next.start) {
+      next.end = Math.max(next.end ?? endTime, endTime)
+    }
+    if (existing && existing.start === next.start && existing.end === next.end) return false
+    textTiming.set(messageID, next)
     return true
   }
 
   return {
     handlePart,
-    get: () => firstPartTime,
-    reset: () => firstPartTime.clear(),
+    get: () => textTiming,
+    reset: () => textTiming.clear(),
     dispose: () => {
       disposed = true
-      firstPartTime.clear()
+      textTiming.clear()
     },
   }
 }
 
-/** Recover the first generated part when the live event was missed. */
+/** Recover visible text timing when the live event was missed. */
+export function visibleTextTimingFromParts(
+  parts: ReadonlyArray<{
+    type: string
+    synthetic?: boolean
+    ignored?: boolean
+    time?: { start?: number; end?: number }
+  }> | undefined,
+  created: number,
+): VisibleTextTiming | undefined {
+  if (!parts?.length) return undefined
+  let start: number | undefined
+  let end: number | undefined
+  for (const part of parts) {
+    if (part.type !== VISIBLE_PART_TYPE || part.synthetic || part.ignored) continue
+    const partStart = part.time?.start
+    if (typeof partStart !== "number" || !Number.isFinite(partStart) || partStart <= created) continue
+    start = start === undefined ? partStart : Math.min(start, partStart)
+    const partEnd = part.time?.end
+    if (typeof partEnd === "number" && Number.isFinite(partEnd) && partEnd > partStart) {
+      end = end === undefined ? partEnd : Math.max(end, partEnd)
+    }
+  }
+  return start === undefined ? undefined : { start, ...(end !== undefined ? { end } : {}) }
+}
+
+export function mergeVisibleTextTiming(
+  known: VisibleTextTiming | undefined,
+  recovered: VisibleTextTiming | undefined,
+): VisibleTextTiming | undefined {
+  if (!known) return recovered
+  if (!recovered) return known
+  const start = Math.min(known.start, recovered.start)
+  const end = Math.max(known.end ?? 0, recovered.end ?? 0)
+  return { start, ...(end > 0 ? { end } : {}) }
+}
+
+/** Recover the first visible text timestamp for older callers. */
 export function earliestPartStart(
-  parts: ReadonlyArray<{ type: string; time?: { start?: number } }> | undefined,
+  parts: ReadonlyArray<{
+    type: string
+    synthetic?: boolean
+    ignored?: boolean
+    time?: { start?: number }
+  }> | undefined,
   created: number,
 ): number | undefined {
-  if (!parts?.length) return undefined
-  let earliest: number | undefined
-  for (const part of parts) {
-    if (!STREAM_PART_TYPES.has(part.type)) continue
-    const start = part.time?.start
-    if (typeof start !== "number" || !Number.isFinite(start) || start <= created) continue
-    if (earliest === undefined || start < earliest) earliest = start
-  }
-  return earliest
+  return visibleTextTimingFromParts(parts, created)?.start
 }

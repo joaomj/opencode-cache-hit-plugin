@@ -28,30 +28,30 @@ describe("timingFromAssistantMessage", () => {
 })
 
 describe("generationDurationMs", () => {
-  test("uses first generated part to completion", () => {
+  test("uses first visible text to last visible text", () => {
     const timing = timingFromAssistantMessage({
       role: "assistant",
       time: { created: 1000, completed: 3000 },
     })!
-    expect(generationDurationMs(timing, 1500)).toBe(1500)
+    expect(generationDurationMs(timing, { start: 1500, end: 2700 })).toBe(1200)
   })
 
-  test("does not fall back when first generated part is unavailable", () => {
+  test("does not fall back when visible text end is unavailable", () => {
     const timing = timingFromAssistantMessage({
       role: "assistant",
       time: { created: 1000, completed: 3000 },
     })!
-    expect(generationDurationMs(timing)).toBeUndefined()
+    expect(generationDurationMs(timing, { start: 1500 })).toBeUndefined()
   })
 
-  test("rejects invalid first generated part timestamps", () => {
+  test("rejects invalid visible text timestamps", () => {
     const timing = timingFromAssistantMessage({
       role: "assistant",
       time: { created: 1000, completed: 3000 },
     })!
-    expect(generationDurationMs(timing, 1000)).toBeUndefined()
-    expect(generationDurationMs(timing, 3000)).toBeUndefined()
-    expect(generationDurationMs(timing, 3500)).toBeUndefined()
+    expect(generationDurationMs(timing, { start: 1000, end: 1000 })).toBeUndefined()
+    expect(generationDurationMs(timing, { start: 3000, end: 3500 })).toBe(500)
+    expect(generationDurationMs(timing, { start: 3500, end: 3000 })).toBeUndefined()
   })
 })
 

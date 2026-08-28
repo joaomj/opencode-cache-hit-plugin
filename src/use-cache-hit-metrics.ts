@@ -7,7 +7,7 @@ import { buildPanelPalette, type PanelPalette } from "./tui-panel/palette.ts"
 import type { PanelLayout } from "./tui-panel/use-panel-layout.ts"
 import type { SessionSnapshot } from "./types.ts"
 import { cacheHitRatio, emptySessionSnapshot, mainSessionHasStats } from "./stats.ts"
-import { computeSessionSpeed, type SessionSpeedTotals } from "./session-metrics.ts"
+import { computeSessionSpeed, type SessionSpeedMetrics } from "./session-metrics.ts"
 import { formatTokenSpeed } from "./token-speed.ts"
 
 function activeLang(display: DisplayConfig) {
@@ -24,7 +24,7 @@ export function useCacheHitMetrics(props: {
   theme: Accessor<Record<string, unknown>>
   display: DisplayConfig
   main: Accessor<SessionSnapshot>
-  speed: Accessor<SessionSpeedTotals>
+  speed: Accessor<SessionSpeedMetrics>
   layout: PanelLayout
 }) {
   const pal = createMemo(() => buildPanelPalette(props.theme()))
@@ -33,8 +33,13 @@ export function useCacheHitMetrics(props: {
   const main = createMemo(() => props.main() ?? emptySessionSnapshot())
   const sessionRatio = createMemo(() => cacheHitRatio(main().cacheRead, main().input))
   const sessionPercent = createMemo(() => sessionRatio() * 100)
-  const speed = createMemo(() => computeSessionSpeed(props.speed()))
-  const speedLabel = createMemo(() => formatTokenSpeed(speed()))
+  const sessionSpeed = createMemo(() => computeSessionSpeed(props.speed().session))
+  const lastTurnSpeed = createMemo(() => {
+    const totals = props.speed().lastTurn
+    return totals ? computeSessionSpeed(totals) : undefined
+  })
+  const speedLabel = createMemo(() => formatTokenSpeed(sessionSpeed()))
+  const lastTurnSpeedLabel = createMemo(() => formatTokenSpeed(lastTurnSpeed()))
   const mainHasStats = createMemo(() => mainSessionHasStats(main()))
   const hasData = createMemo(() => mainHasStats())
   const bar = createMemo(() =>
@@ -61,6 +66,8 @@ export function useCacheHitMetrics(props: {
     pctLabel: createMemo(() => formatPercentOneDecimal(sessionPercent())),
     sessionPct: createMemo(() => formatRatioAsPercent(sessionRatio())),
     speedLabel,
+    lastTurnSpeedLabel,
+    sessionSpeedLabel: speedLabel,
     collapsedHitSummary,
   }
 }

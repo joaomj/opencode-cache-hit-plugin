@@ -4,6 +4,8 @@ export type UiStrings = {
   title: string
   hit: string
   speed: string
+  lastTurnSpeed: string
+  sessionSpeed: string
   input: string
   read: string
   write: string
@@ -23,6 +25,8 @@ const EN: UiStrings = {
   title: "Cache Hit",
   hit: "Hit",
   speed: "Speed:",
+  lastTurnSpeed: "Last turn:",
+  sessionSpeed: "Session:",
   input: "Input:",
   read: "Read:",
   write: "Write:",

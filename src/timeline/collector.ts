@@ -1,6 +1,7 @@
 import type { ToolTimingTracker } from "../tool-timing.ts"
 import type { TimelineConfig } from "../plugin-config.ts"
 import type { AssistantMessage } from "../types.ts"
+import type { VisibleTextTiming } from "../first-part-time.ts"
 import { assistantMessageToRecord } from "./records.ts"
 import {
   appendTimelineRecord,
@@ -23,7 +24,7 @@ export function createTimelineCollector(opts: {
   getConfig: () => TimelineConfig
   getSessionId: () => string
   toolTiming: ToolTimingTracker
-  firstPartTime?: (messageID: string) => number | undefined
+  textTiming?: (messageID: string) => VisibleTextTiming | undefined
   /** Test hook: replace disk append */
   append?: (logPath: string, record: LlmCallRecord, config: TimelineConfig) => Promise<void>
 }): TimelineCollector {
@@ -76,7 +77,7 @@ export function createTimelineCollector(opts: {
       sessionID,
       Date.now(),
       toolTiming.getDurations(msgID),
-      opts.firstPartTime?.(msgID),
+      opts.textTiming?.(msgID),
     )
     if (!rec) return
     if (!config.flushIncomplete && !rec.isComplete) return
