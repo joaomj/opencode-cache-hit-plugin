@@ -34,12 +34,7 @@ export function useCacheHitMetrics(props: {
   const sessionRatio = createMemo(() => cacheHitRatio(main().cacheRead, main().input))
   const sessionPercent = createMemo(() => sessionRatio() * 100)
   const sessionSpeed = createMemo(() => computeSessionSpeed(props.speed().session))
-  const lastTurnSpeed = createMemo(() => {
-    const totals = props.speed().lastTurn
-    return totals ? computeSessionSpeed(totals) : undefined
-  })
   const speedLabel = createMemo(() => formatTokenSpeed(sessionSpeed()))
-  const lastTurnSpeedLabel = createMemo(() => formatTokenSpeed(lastTurnSpeed()))
   const mainHasStats = createMemo(() => mainSessionHasStats(main()))
   const hasData = createMemo(() => mainHasStats())
   const bar = createMemo(() =>
@@ -66,7 +61,6 @@ export function useCacheHitMetrics(props: {
     pctLabel: createMemo(() => formatPercentOneDecimal(sessionPercent())),
     sessionPct: createMemo(() => formatRatioAsPercent(sessionRatio())),
     speedLabel,
-    lastTurnSpeedLabel,
     sessionSpeedLabel: speedLabel,
     collapsedHitSummary,
   }

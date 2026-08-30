@@ -11,17 +11,16 @@ This project is maintained by [Joao Marcos](https://github.com/joaomj). It is ba
 The panel shows one session only and is limited to the metrics listed below.
 
 - **Cache Hit**: cache-read tokens as a percentage of input plus cache-read tokens
-- **Last turn**: weighted output speed for the last completed user turn in `tok/s`
 - **Session**: weighted output speed for all completed calls in the session in `tok/s`
 - **Input / Output**: input and generated token totals
 - **Cache Read / Cache Write**: prompt-cache token totals
 
-Speed uses the first visible text timestamp and the last visible text timestamp.
+Speed uses the first visible text timestamp and the last visible text timestamp
+(falls back to completion time when the last text end is not available).
 It counts output tokens minus one. It excludes reasoning tokens, tool time,
 failed calls, tool-only calls, and samples shorter than 250 milliseconds.
 
-The **Last turn** value stays on the last completed turn while the current turn
-is active. The **Session** value uses total eligible output tokens divided by
+The **Session** value uses total eligible output tokens divided by
 total eligible generation time.
 
 ## Design References
@@ -35,7 +34,7 @@ The speed metrics use ideas from these OpenCode changes:
   counting.
 
 This plugin applies the first-to-last visible text rule through the current
-plugin API and provides both last-turn and session aggregates.
+plugin API and provides the session aggregate.
 
 ## Install
 

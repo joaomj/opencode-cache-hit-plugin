@@ -27,14 +27,25 @@ export function timingFromAssistantMessage(msg: AssistantMessage): MessageTiming
   }
 }
 
-/** Generation duration from the first visible text to the last visible text. */
+/** Generation duration from the first visible text to the last visible text. Falls back to completedAt when end is missing. */
 export function generationDurationMs(
-  _timing: MessageTiming,
+  timing: MessageTiming,
   textTiming?: VisibleTextTiming,
 ): number | undefined {
-  if (!textTiming || !Number.isFinite(textTiming.start) || !Number.isFinite(textTiming.end)) return undefined
-  if (textTiming.end <= textTiming.start) return undefined
-  return textTiming.end - textTiming.start
+  if (!textTiming || !Number.isFinite(textTiming.start)) return undefined
+  const start = textTiming.start
+  let end: number | undefined
+  if (textTiming.end !== undefined) {
+    if (!Number.isFinite(textTiming.end) || textTiming.end <= start) return undefined
+    end = textTiming.end
+  } else if (timing.isComplete && timing.completedAt !== undefined && timing.completedAt > start) {
+    end = timing.completedAt
+  } else {
+    return undefined
+  }
+  const dur = end - start
+  if (dur <= 0 || !Number.isFinite(dur)) return undefined
+  return dur
 }
 
 export function formatTimingShort(ms: number): string {

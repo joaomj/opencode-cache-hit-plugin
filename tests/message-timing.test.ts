@@ -36,10 +36,18 @@ describe("generationDurationMs", () => {
     expect(generationDurationMs(timing, { start: 1500, end: 2700 })).toBe(1200)
   })
 
-  test("does not fall back when visible text end is unavailable", () => {
+  test("falls back to completed when visible text end is unavailable", () => {
     const timing = timingFromAssistantMessage({
       role: "assistant",
       time: { created: 1000, completed: 3000 },
+    })!
+    expect(generationDurationMs(timing, { start: 1500 })).toBe(1500)
+  })
+
+  test("does not fall back when generation is in-flight", () => {
+    const timing = timingFromAssistantMessage({
+      role: "assistant",
+      time: { created: 1000 },
     })!
     expect(generationDurationMs(timing, { start: 1500 })).toBeUndefined()
   })

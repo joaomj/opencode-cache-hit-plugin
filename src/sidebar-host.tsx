@@ -13,7 +13,6 @@ import {
   addSessionSpeed,
   aggregateSessionSpeed,
   EMPTY_SESSION_SPEED,
-  lastCompletedTurnSpeed,
   loadSessionSpeed,
   sessionMessageKey,
   speedContribution,
@@ -96,8 +95,7 @@ export function CacheHitSidebarHost(props: {
     const messages = currentSessionMessages()
     for (const message of messages) seedFirstPartTime(message)
     const fallback = aggregateSessionSpeed(messages, firstPartTracker.get())
-    const fallbackLastTurn = lastCompletedTurnSpeed(messages, firstPartTracker.get())
-    setSpeedMetrics({ session: fallback, lastTurn: fallbackLastTurn })
+    setSpeedMetrics({ session: fallback })
     if (!sid || !props.api.client.session.messages) {
       seenSpeedMessages = new Set(messages.map(sessionMessageKey).filter((key): key is string => key !== undefined))
       return
@@ -109,7 +107,6 @@ export function CacheHitSidebarHost(props: {
       sessionId: sid,
       directory: props.api.state.path.directory,
       fallback,
-      fallbackLastTurn,
       textTiming: firstPartTracker.get(),
       part: props.api.state.part,
     }).then((result) => {
@@ -120,10 +117,8 @@ export function CacheHitSidebarHost(props: {
       }
       seenSpeedMessages = new Set(result.messageKeys)
       for (const key of pendingSpeedMessages.keys()) seenSpeedMessages.add(key)
-      const currentMessages = currentSessionMessages()
       setSpeedMetrics({
         session: totals,
-        lastTurn: lastCompletedTurnSpeed(currentMessages, firstPartTracker.get()) ?? result.lastTurn,
       })
       pendingSpeedMessages = new Map()
     })
@@ -154,14 +149,6 @@ export function CacheHitSidebarHost(props: {
             session: addSessionSpeed(metrics.session, contribution),
           }))
         }
-        const messages = currentSessionMessages()
-        const currentIndex = key ? messages.findIndex((item) => sessionMessageKey(item) === key) : -1
-        if (currentIndex >= 0) messages[currentIndex] = msg
-        else messages.push(msg)
-        setSpeedMetrics((metrics) => ({
-          ...metrics,
-          lastTurn: lastCompletedTurnSpeed(messages, firstPartTracker.get()) ?? metrics.lastTurn,
-        }))
         bumpRefresh()
       }
       if (sid && msg) timeline?.handleMessage(sid, msg)
