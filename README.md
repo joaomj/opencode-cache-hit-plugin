@@ -76,34 +76,6 @@ Configuration files accept JSONC. The example file is strict JSON.
 | `panelBorder` | `true` | Show the panel border |
 | `mainHitLabel` | `Cache Hit` | Override the Cache Hit label |
 
-### Timeline logs
-
-Timeline logging is optional and disabled by default. When enabled, the plugin
-writes one JSONL record per assistant turn. It records session token, cache,
-cost, and timing data for local analysis.
-
-```json
-{
-  "timeline": {
-    "enabled": true,
-    "dir": "",
-    "maxMemoryRows": 50,
-    "maxLinesPerFile": 0,
-    "rotateMaxBytes": 0,
-    "retainRotated": 5,
-    "maxAgeDays": 0,
-    "maxLogFiles": 0,
-    "toolSummary": {
-      "allTools": true,
-      "bash": false
-    }
-  }
-}
-```
-
-Set `toolSummary` to `false` to record timing without tool summaries. Bash
-summaries are disabled by default because command input can contain secrets.
-
 ## Updating
 
 Pull the latest changes from `main`, then restart OpenCode.

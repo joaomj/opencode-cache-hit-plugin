@@ -22,9 +22,7 @@
     "prompt-cache",
     "token",
     "cost",
-    "cost-tracking",
-    "jsonl",
-    "timeline"
+    "cost-tracking"
   ],
   "exports": {
     ".": "./index.tsx",

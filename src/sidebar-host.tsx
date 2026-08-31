@@ -1,10 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { CacheHitSidebar } from "./widget.tsx"
-import type { DisplayConfig, TimelineConfig } from "./plugin-config.ts"
-import { isToolSummaryEnabled } from "./plugin-config.ts"
-import { createTimelineCollector } from "./timeline/collector.ts"
-import { createToolTimingTracker, type ToolPartEventData } from "./tool-timing.ts"
+import type { DisplayConfig } from "./plugin-config.ts"
 import { isPartUpdatedEvent } from "./types.ts"
 import type { AssistantMessage, OpenCodeTuiApi } from "./types.ts"
 import { createFirstPartTimeTracker, visibleTextTimingFromParts } from "./first-part-time.ts"
@@ -20,12 +17,11 @@ import {
   type SessionSpeedTotals,
 } from "./session-metrics.ts"
 
-/** Session-only host. Timeline tracking is created only when explicitly enabled. */
+/** Session-only host for live cache and generation metrics. */
 export function CacheHitSidebarHost(props: {
   sessionId: string
   theme: Record<string, unknown>
   display: DisplayConfig
-  timeline: TimelineConfig
   api: OpenCodeTuiApi
 }) {
   const [refreshTick, setRefreshTick] = createSignal(0)
@@ -38,24 +34,8 @@ export function CacheHitSidebarHost(props: {
   let pendingSpeedMessages = new Map<string, SessionSpeedTotals>()
 
   const bumpRefresh = () => setRefreshTick((v) => v + 1)
-  const timelineEnabled = props.timeline.enabled
-  const toolTiming = timelineEnabled
-    ? createToolTimingTracker({
-        isSummaryEnabled: (tool) => isToolSummaryEnabled(props.timeline.toolSummary, tool),
-      })
-    : undefined
-  const timeline = timelineEnabled && toolTiming
-    ? createTimelineCollector({
-        getConfig: () => props.timeline,
-        getSessionId: () => props.sessionId,
-        toolTiming,
-        textTiming: (messageID) => firstPartTracker.get().get(messageID),
-      })
-    : undefined
 
   onCleanup(() => {
-    toolTiming?.dispose()
-    timeline?.dispose()
     firstPartTracker.dispose()
   })
 
@@ -127,8 +107,6 @@ export function CacheHitSidebarHost(props: {
   createEffect(() => {
     void props.sessionId
     void props.api.state.path.directory
-    timeline?.reset()
-    toolTiming?.reset()
     firstPartTracker.reset()
     resetSpeed()
   })
@@ -151,7 +129,6 @@ export function CacheHitSidebarHost(props: {
         }
         bumpRefresh()
       }
-      if (sid && msg) timeline?.handleMessage(sid, msg)
     })
     onCleanup(() => unsub?.())
   })
@@ -168,7 +145,6 @@ export function CacheHitSidebarHost(props: {
       ) {
         bumpRefresh()
       }
-      if (part.type === "tool") toolTiming?.handleToolPart(part.messageID, part as ToolPartEventData)
     })
     onCleanup(() => {
       unsub?.()

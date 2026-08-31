@@ -17,12 +17,6 @@ describe("load-config paths", () => {
     expect(XDG_CONFIG_PATH).not.toInclude(".cache")
   })
 
-  test("loads config from repo cache-hit.config.json when XDG config is absent", () => {
-    if (!existsSync(CONFIG_PATH)) return
-    const cfg = loadPluginConfig()
-    expect(cfg.timeline.enabled).toBe(true)
-  })
-
   test("returns defaults when neither config exists", () => {
     const cfg = loadPluginConfig()
     expect(cfg.display.lang).toBeTruthy()
@@ -30,10 +24,9 @@ describe("load-config paths", () => {
 
   test("cloneDefault returns deep copy — mutations do not pollute DEFAULT_PLUGIN_CONFIG", () => {
     const cfg = cloneDefault()
-    cfg.timeline.toolSummary = false
     cfg.display.lang = "auto"
 
-    expect(DEFAULT_PLUGIN_CONFIG.timeline.toolSummary).toEqual({ allTools: true, bash: false })
+    expect(cfg.display).not.toBe(DEFAULT_PLUGIN_CONFIG.display)
     expect(DEFAULT_PLUGIN_CONFIG.display.lang).toBe("en")
   })
 
@@ -57,7 +50,7 @@ describe("load-config paths", () => {
       expect(cfg).not.toBeNull()
       expect("cost" in (cfg ?? {})).toBe(false)
       expect(cfg?.display.lang).toBe("auto")
-      expect(cfg?.timeline.enabled).toBe(false)
+      expect("timeline" in (cfg ?? {})).toBe(false)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

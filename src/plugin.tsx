@@ -17,7 +17,6 @@ export const tui = async (api: OpenCodeTuiApi) => {
             sessionId={props.session_id ?? ""}
             theme={ctx.theme.current}
             display={pluginConfig.display}
-            timeline={pluginConfig.timeline}
             api={api}
           />
         )
